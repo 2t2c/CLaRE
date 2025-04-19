@@ -2,6 +2,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import argparse
+import json
 import os
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 import pickle
@@ -255,9 +256,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # create result directories
-    if os.path.exists(args.result_folder):
-        shutil.rmtree(args.result_folder)
-    os.makedirs(args.result_folder)
+    # if os.path.exists(args.result_folder):
+    #     shutil.rmtree(args.result_folder)
+    os.makedirs(args.result_folder, exist_ok=True)
     
     # load model weights
     model = get_model(args.arch)
@@ -273,7 +274,9 @@ if __name__ == '__main__':
         dataset_paths = [dict(real_path=args.real_path, fake_path=args.fake_path, data_mode=args.data_mode)]
 
     # creating wandb session
-    experiment_name = args.real_path.split('/')[-4] + '_' + args.real_path.split('/')[-2]
+    dataset_type = args.real_path.split('/')[-3]
+    dataset_name = args.real_path.split('/')[-1]
+    experiment_name = dataset_type + '_' + dataset_name
     if args.run_name is not None:
         experiment_name = args.run_name + '_' + experiment_name
     wandb.init(
@@ -286,11 +289,12 @@ if __name__ == '__main__':
             "batch_size": args.batch_size,
             "result_folder": args.result_folder,
             "seed": SEED,
-            "dataset_type": args.real_path.split('/')[-4],
-            "dataset_name": args.real_path.split('/')[-2],
+            "dataset_type": dataset_type,
+            "dataset_name": dataset_name,
         },
         settings=wandb.Settings(_service_wait=300, init_timeout=120))
     
+    print(dataset_paths)
     for dataset_path in (dataset_paths):
         # set seed for deterministic results
         set_seed()
@@ -308,7 +312,7 @@ if __name__ == '__main__':
         ap, r_acc0, f_acc0, acc0, r_acc1, f_acc1, acc1, best_thres = validate(model, loader, find_thres=True)
 
         # log metrics
-        wandb.log({
+        metrics = {
             "average_precision": ap,
             "real_accuracy_0.5": r_acc0,
             "fake_accuracy_0.5": f_acc0,
@@ -317,14 +321,25 @@ if __name__ == '__main__':
             "fake_accuracy_best": f_acc1,
             "accuracy_best": acc1,
             "best_threshold": best_thres
-        })
+        }
+        wandb.log(metrics)
 
         # export metrics
-        with open(os.path.join(args.result_folder, 'ap.txt'), 'a') as f:
-            f.write(dataset_path['key'] + ': ' + str(round(ap * 100, 2)) + '\n')
-        with open(os.path.join(args.result_folder, 'acc0.txt'), 'a') as f:
-            f.write(dataset_path['key'] + ': ' + str(round(r_acc0 * 100, 2)) + '  ' + str(
-                round(f_acc0 * 100, 2)) + '  ' + str(round(acc0 * 100, 2)) + '\n')
+        export_path = os.path.join(args.result_folder, f"{dataset_type}_metrics.json")
+
+        # read existing or create new
+        if os.path.exists(export_path):
+            with open(export_path, "r") as f:
+                all_metrics = json.load(f)
+        else:
+            all_metrics = {}
+
+        # update by dataset_name key
+        all_metrics[dataset_name] = metrics
+
+        # save updated
+        with open(export_path, "w") as f:
+            json.dump(all_metrics, f, indent=4)
 
         # exit session
         wandb.finish()
