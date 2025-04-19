@@ -1,3 +1,10 @@
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+# wandb logs
+wandb/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
