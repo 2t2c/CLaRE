@@ -4,11 +4,11 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=9
 #SBATCH --gpus=1
-#SBATCH --job-name=train
+#SBATCH --job-name=validate
 #SBATCH --ntasks=1
 #SBATCH --time=02:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=eval_output_%A.out
+#SBATCH --output=validate_output_%A.out
 
 module purge
 module load 2024
@@ -19,6 +19,9 @@ module load Anaconda3/2023.07-2
 cd $HOME/udit/FoMo/
 source activate fomo
 
+# login wanb
+wandb login
+
 # validation variables
 CKPT_FOLDER="pretrained_weights/fc_weights.pth"
 ARCHITECTURE="CLIP:ViT-L/14"
@@ -26,12 +29,14 @@ RESULT_FOLDER="clip_vitl14"
 DATASET_DIR="$TMPDIR/datasets"
 CNN_DETECTION_DATA_TYPES=(biggan cyclegan gaugan progan seeingdark stylegan whichfaceisreal crn deepfake imle san stargan stylegan2)
 # debug
-#CNN_DETECTION_DATA_TYPES=(progan)
+CNN_DETECTION_DATA_TYPES=(biggan)
 
 for CNN_DETECTION_DATA_TYPE in "${CNN_DETECTION_DATA_TYPES[@]}"; do
-  srun python validate.py --arch="$ARCHITECTURE" \
+  srun python validate.py --run_name "debug" \
+    --arch "$ARCHITECTURE" \
     --ckpt "$CKPT_FOLDER" \
     --result_folder "$RESULT_FOLDER" \
-    --real_path "$DATASET_DIR/test/$CNN_DETECTION_DATA_TYPE/0_real" \
-    --fake_path "$DATASET_DIR/test/$CNN_DETECTION_DATA_TYPE/1_fake"
+    --data_mode "ours" \
+    --real_path "$DATASET_DIR/cnn_detection/test/$CNN_DETECTION_DATA_TYPE/0_real" \
+    --fake_path "$DATASET_DIR/cnn_detection/test/$CNN_DETECTION_DATA_TYPE/1_fake"
 done

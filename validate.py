@@ -24,7 +24,7 @@ from models import get_model
 
 # logging
 import wandb
-wandb.login()
+# wandb.login()
 
 # global variables
 SEED = 0
@@ -273,7 +273,7 @@ if __name__ == '__main__':
         dataset_paths = [dict(real_path=args.real_path, fake_path=args.fake_path, data_mode=args.data_mode)]
 
     # creating wandb session
-    experiment_name = args.real_path.split('/')[-4] + '_' + args.fake_path.split('/')[-2]
+    experiment_name = args.real_path.split('/')[-4] + '_' + args.real_path.split('/')[-2]
     if args.run_name is not None:
         experiment_name = args.run_name + '_' + experiment_name
     wandb.init(
@@ -285,7 +285,9 @@ if __name__ == '__main__':
             "ckpt": args.ckpt,
             "batch_size": args.batch_size,
             "result_folder": args.result_folder,
-            "seed": SEED
+            "seed": SEED,
+            "dataset_type": args.real_path.split('/')[-4],
+            "dataset_name": args.real_path.split('/')[-2],
         },
         settings=wandb.Settings(_service_wait=300, init_timeout=120))
     
