@@ -4,7 +4,8 @@
 module load p7zip/17.05-GCCcore-13.3.0
 
 # Set root path
-ROOT="$TMPDIR/datasets"
+#ROOT="$TMPDIR/datasets" # does not work with validate.job due to mkdir dynamics
+ROOT="/scratch-shared/scur0555/datasets" # working
 mkdir -p "$ROOT/cnn_detection/train" "$ROOT/cnn_detection/val" "$ROOT/cnn_detection/test"
 
 # Dataset 1: CNN-generated images are surprisingly easy to spot...for now
