@@ -30,14 +30,14 @@ RESULT_FOLDER="results/clip_vitl14"
 DATASET_DIR="/scratch-shared/scur0555/datasets" # working
 CNN_DETECTION_DATA_TYPES=(biggan cyclegan gaugan progan seeingdark stylegan whichfaceisreal crn deepfake imle san stargan stylegan2)
 # debug
-# CNN_DETECTION_DATA_TYPES=(progan)
+# CNN_DETECTION_DATA_TYPES=(biggan)
 
 for CNN_DETECTION_DATA_TYPE in "${CNN_DETECTION_DATA_TYPES[@]}"; do
   srun python validate.py --run_name "validation" \
     --arch "$ARCHITECTURE" \
     --ckpt "$CKPT_FOLDER" \
     --result_folder "$RESULT_FOLDER" \
-    --data_mode "ours" \
+    --data_mode "wang2020" \
     --real_path "$DATASET_DIR/cnn_detection/test/$CNN_DETECTION_DATA_TYPE" \
     --fake_path "$DATASET_DIR/cnn_detection/test/$CNN_DETECTION_DATA_TYPE"
 done
