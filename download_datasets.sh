@@ -44,3 +44,33 @@ FILEID=1FXlGIRh_Ud3cScMgSVDbEWmPDmjcrm1t
 gdown https://drive.google.com/uc?id=$FILEID
 unzip diffusion_datasets.zip
 rm diffusion_datasets.zip
+
+# Datset 3: DF40 (test set)
+cd "$ROOT" || exit 1
+mkdir -p "$ROOT/df40/train" "$ROOT/df40/val" "$ROOT/df40/test"
+cd "$ROOT/df40/test" || exit 1
+FOLDERID=1980LCMAutfWvV6zvdxhoeIa67TmzKLQ_
+# follow this: https://stackoverflow.com/questions/65312867/how-to-download-large-file-from-google-drive-from-terminal-gdown-doesnt-work
+ACCESS_TOKEN="<access-token>"
+
+# step 1: save the files inside the folder to a .json object
+curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "https://www.googleapis.com/drive/v3/files?q='$FOLDERID'+in+parents+and+trashed=false&fields=files(id,name,mimeType)" \
+  -o df40_files.json
+
+# step 2: download each .zip file iteratively by reading the saved .json mappings
+# single file: curl -H "Authorization: Bearer ${ACCESS_TOKEN}" https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media -o ${FILENAME}.zip
+
+jq -r '.files[] | select(.mimeType != "application/vnd.google-apps.folder" and (.name | endswith(".zip"))) | [.id, .name] | @tsv' df40_files.json | \
+while IFS=$'\t' read -r FILEID FILENAME; do
+  echo "Downloading $FILENAME $FILEID"
+  curl -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+       -L "https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media" \
+       -o "${FILENAME}"
+done
+
+# step 3: unzipping
+for file in *.zip; do
+  echo "Unzipping $file"
+  unzip -o "$file" -d "${file%.zip}"
+done

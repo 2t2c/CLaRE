@@ -1,0 +1,544 @@
+============================================================================================== 
+Warning! Mixing Conda and module environments may lead to corruption of the
+user environment. 
+We do not recommend users mixing those two environments unless absolutely
+necessary. Note that 
+SURF does not provide any support for Conda environment.
+For more information, please refer to our software policy page:
+https://servicedesk.surf.nl/wiki/display/WIKI/Software+policy+Snellius#SoftwarepolicySnellius-UseofAnacondaandMinicondaenvironmentsonSnellius 
+
+Remember that many packages have already been installed on the system and can
+be loaded using 
+the 'module load <package__name>' command. If you are uncertain if a package is
+already available 
+on the system, please use 'module avail' or 'module spider' to search for it.
+============================================================================================== 
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024150-jpzybc85
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_biggan-2025-04-20 02:41:49.899448+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/jpzybc85
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/biggan', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/biggan', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.9545
+wandb:      accuracy_best 0.963
+wandb:  average_precision 0.99372
+wandb:     best_threshold 0.16801
+wandb:  fake_accuracy_0.5 0.928
+wandb: fake_accuracy_best 0.967
+wandb:  real_accuracy_0.5 0.981
+wandb: real_accuracy_best 0.959
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_biggan-2025-04-20 02:41:49.899448+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/jpzybc85
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024150-jpzybc85/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024231-2u1cu49v
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_cyclegan-2025-04-20 02:42:31.445513+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/2u1cu49v
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/cyclegan', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/cyclegan', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb: uploading wandb-summary.json
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.9845
+wandb:      accuracy_best 0.984
+wandb:  average_precision 0.99794
+wandb:     best_threshold 0.53019
+wandb:  fake_accuracy_0.5 0.98
+wandb: fake_accuracy_best 0.979
+wandb:  real_accuracy_0.5 0.989
+wandb: real_accuracy_best 0.989
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_cyclegan-2025-04-20 02:42:31.445513+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/2u1cu49v
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024231-2u1cu49v/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024310-onp1r5f8
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_gaugan-2025-04-20 02:43:10.301926+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/onp1r5f8
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/gaugan', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/gaugan', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.9955
+wandb:      accuracy_best 0.9955
+wandb:  average_precision 0.99988
+wandb:     best_threshold 0.52132
+wandb:  fake_accuracy_0.5 0.995
+wandb: fake_accuracy_best 0.994
+wandb:  real_accuracy_0.5 0.996
+wandb: real_accuracy_best 0.997
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_gaugan-2025-04-20 02:43:10.301926+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/onp1r5f8
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024310-onp1r5f8/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024350-cn7759yf
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_progan-2025-04-20 02:43:49.945568+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/cn7759yf
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/progan', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/progan', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.9975
+wandb:      accuracy_best 0.9975
+wandb:  average_precision 0.99998
+wandb:     best_threshold 0.34542
+wandb:  fake_accuracy_0.5 0.999
+wandb: fake_accuracy_best 0.999
+wandb:  real_accuracy_0.5 0.996
+wandb: real_accuracy_best 0.996
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_progan-2025-04-20 02:43:49.945568+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/cn7759yf
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024350-cn7759yf/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024429-6c2yfolp
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_seeingdark-2025-04-20 02:44:29.036451+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/6c2yfolp
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/seeingdark', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/seeingdark', 'data_mode': 'wang2020'}]
+not enough images, max_sample falling to 100
+Length of dataset: 2
+wandb: uploading history steps 0-0, summary
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.635
+wandb:      accuracy_best 0.655
+wandb:  average_precision 0.62538
+wandb:     best_threshold 0.71108
+wandb:  fake_accuracy_0.5 0.77
+wandb: fake_accuracy_best 0.66
+wandb:  real_accuracy_0.5 0.5
+wandb: real_accuracy_best 0.65
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_seeingdark-2025-04-20 02:44:29.036451+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/6c2yfolp
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024429-6c2yfolp/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024634-8c1u7fnh
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_stylegan-2025-04-20 02:46:33.705106+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/8c1u7fnh
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/stylegan', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/stylegan', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.852
+wandb:      accuracy_best 0.8965
+wandb:  average_precision 0.97262
+wandb:     best_threshold 0.01187
+wandb:  fake_accuracy_0.5 0.708
+wandb: fake_accuracy_best 0.911
+wandb:  real_accuracy_0.5 0.996
+wandb: real_accuracy_best 0.882
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_stylegan-2025-04-20 02:46:33.705106+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/8c1u7fnh
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024634-8c1u7fnh/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024713-3r4t67d7
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_whichfaceisreal-2025-04-20 02:47:13.497311+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/3r4t67d7
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/whichfaceisreal', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/whichfaceisreal', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb: uploading history steps 0-0, summary
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.872
+wandb:      accuracy_best 0.916
+wandb:  average_precision 0.9727
+wandb:     best_threshold 0.21321
+wandb:  fake_accuracy_0.5 0.767
+wandb: fake_accuracy_best 0.921
+wandb:  real_accuracy_0.5 0.977
+wandb: real_accuracy_best 0.911
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_whichfaceisreal-2025-04-20 02:47:13.497311+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/3r4t67d7
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024713-3r4t67d7/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024757-9wuoqbgn
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_crn-2025-04-20 02:47:57.087078+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/9wuoqbgn
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/crn', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/crn', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.565
+wandb:      accuracy_best 0.911
+wandb:  average_precision 0.96967
+wandb:     best_threshold 0.0003
+wandb:  fake_accuracy_0.5 0.131
+wandb: fake_accuracy_best 0.915
+wandb:  real_accuracy_0.5 0.999
+wandb: real_accuracy_best 0.907
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_crn-2025-04-20 02:47:57.087078+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/9wuoqbgn
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024757-9wuoqbgn/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024837-z4yldk78
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_deepfake-2025-04-20 02:48:37.371510+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/z4yldk78
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/deepfake', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/deepfake', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.6965
+wandb:      accuracy_best 0.7285
+wandb:  average_precision 0.82324
+wandb:     best_threshold 0.23673
+wandb:  fake_accuracy_0.5 0.436
+wandb: fake_accuracy_best 0.611
+wandb:  real_accuracy_0.5 0.957
+wandb: real_accuracy_best 0.846
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_deepfake-2025-04-20 02:48:37.371510+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/z4yldk78
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024837-z4yldk78/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024916-ufk5vzhp
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_imle-2025-04-20 02:49:15.681800+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/ufk5vzhp
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/imle', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/imle', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.6935
+wandb:      accuracy_best 0.939
+wandb:  average_precision 0.9857
+wandb:     best_threshold 0.00054
+wandb:  fake_accuracy_0.5 0.388
+wandb: fake_accuracy_best 0.938
+wandb:  real_accuracy_0.5 0.999
+wandb: real_accuracy_best 0.94
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_imle-2025-04-20 02:49:15.681800+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/ufk5vzhp
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024916-ufk5vzhp/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_024955-q9hbs5dk
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_san-2025-04-20 02:49:55.046864+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/q9hbs5dk
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/san', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/san', 'data_mode': 'wang2020'}]
+not enough images, max_sample falling to 100
+Length of dataset: 2
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.565
+wandb:      accuracy_best 0.75
+wandb:  average_precision 0.79803
+wandb:     best_threshold 0.00366
+wandb:  fake_accuracy_0.5 0.16
+wandb: fake_accuracy_best 0.77
+wandb:  real_accuracy_0.5 0.97
+wandb: real_accuracy_best 0.73
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_san-2025-04-20 02:49:55.046864+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/q9hbs5dk
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_024955-q9hbs5dk/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_025018-r31jtdqa
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_stargan-2025-04-20 02:50:18.356498+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/r31jtdqa
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/stargan', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/stargan', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb: uploading history steps 0-0, summary
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.9545
+wandb:      accuracy_best 0.966
+wandb:  average_precision 0.9931
+wandb:     best_threshold 0.69234
+wandb:  fake_accuracy_0.5 0.978
+wandb: fake_accuracy_best 0.965
+wandb:  real_accuracy_0.5 0.931
+wandb: real_accuracy_best 0.967
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_stargan-2025-04-20 02:50:18.356498+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/r31jtdqa
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_025018-r31jtdqa/logs
+/gpfs/home1/scur0555/udit/FoMo/validate.py:19: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+  from scipy.ndimage.filters import gaussian_filter
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: 2t2c (dreamerz) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.9
+wandb: Run data is saved locally in /gpfs/home1/scur0555/udit/FoMo/wandb/run-20250420_025057-xcz90erk
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run validation_cnn_detection_stylegan2-2025-04-20 02:50:57.459577+02:00
+wandb: ⭐️ View project at https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: 🚀 View run at https://wandb.ai/FoMo/UniversalFakeDetect/runs/xcz90erk
+Model loaded...
+[{'real_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/stylegan2', 'fake_path': '/scratch-shared/scur0555/datasets/cnn_detection/test/stylegan2', 'data_mode': 'wang2020'}]
+Length of dataset: 16
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:       accuracy_0.5 ▁
+wandb:      accuracy_best ▁
+wandb:  average_precision ▁
+wandb:     best_threshold ▁
+wandb:  fake_accuracy_0.5 ▁
+wandb: fake_accuracy_best ▁
+wandb:  real_accuracy_0.5 ▁
+wandb: real_accuracy_best ▁
+wandb: 
+wandb: Run summary:
+wandb:       accuracy_0.5 0.7525
+wandb:      accuracy_best 0.924
+wandb:  average_precision 0.97665
+wandb:     best_threshold 0.0105
+wandb:  fake_accuracy_0.5 0.508
+wandb: fake_accuracy_best 0.948
+wandb:  real_accuracy_0.5 0.997
+wandb: real_accuracy_best 0.9
+wandb: 
+wandb: 🚀 View run validation_cnn_detection_stylegan2-2025-04-20 02:50:57.459577+02:00 at: https://wandb.ai/FoMo/UniversalFakeDetect/runs/xcz90erk
+wandb: ⭐️ View project at: https://wandb.ai/FoMo/UniversalFakeDetect
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250420_025057-xcz90erk/logs
+
+JOB STATISTICS
+==============
+Job ID: 11284660
+Cluster: snellius
+User/Group: scur0555/scur0555
+State: RUNNING
+Nodes: 1
+Cores per node: 18
+CPU Utilized: 00:11:23
+CPU Efficiency: 6.28% of 03:01:12 core-walltime
+Job Wall-clock time: 00:10:04
+Memory Utilized: 3.25 GB
+Memory Efficiency: 10.40% of 31.25 GB (31.25 GB/node)
+WARNING: Efficiency statistics can only be obtained after the job has ended as seff tool is based on the accounting database data.
