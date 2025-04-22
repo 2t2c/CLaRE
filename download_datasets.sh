@@ -74,3 +74,20 @@ for file in *.zip; do
   echo "Unzipping $file"
   unzip -o "$file" -d "${file%.zip}"
 done
+
+# step 4: dataset configs
+cd "$ROOT/df40" || exit 1
+mkdir -p "$ROOT/df40/configs"
+cd "$ROOT/df40/configs" || exit 1
+FOLDERID=19VhAL4aDJOKvhl9stEq_ymFeHiXo6_j-
+# gdown --folder https://drive.google.com/drive/folders/$FOLDERID --remaining-ok
+
+curl -s -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  "https://www.googleapis.com/drive/v3/files?q='${FOLDERID}'+in+parents+and+trashed=false&fields=files(id,name,mimeType)" | \
+jq -r '.files[] | select(.mimeType != "application/vnd.google-apps.folder" and (.name | endswith(".json"))) | [.id, .name] | @tsv' | \
+while IFS=$'\t' read -r FILEID FILENAME; do
+  echo "Downloading $FILENAME"
+  curl -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+       -L "https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media" \
+       --progress-bar -o "${FILENAME}"
+done
