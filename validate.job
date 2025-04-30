@@ -8,7 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --time=02:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=validate_output_%A.out
+#SBATCH --output=./tmp/validate_output_%A.out
 
 module purge
 module load 2024
@@ -24,8 +24,9 @@ wandb login
 
 # validation variables
 CKPT_FOLDER="pretrained_weights/fc_weights.pth"
-ARCHITECTURE="CLIP:ViT-L/14"
-RESULT_FOLDER="results/clip_vitl14"
+# ARCHITECTURE="CLIP:ViT-L/14"
+ARCHITECTURE="OpenCLIP:ViT-H/14:laion2b_s32b_b79k"
+RESULT_FOLDER="results/open_clip_vith14_laion2b_s32b_b79k"
 # DATASET_DIR="$TMPDIR/datasets" # not working, the env. var. changes on sbatch (todo: fix it)
 DATASET_DIR="/scratch-shared/scur0555/datasets" # working
 CNN_DETECTION_DATA_TYPES=(biggan cyclegan gaugan progan seeingdark stylegan whichfaceisreal crn deepfake imle san stargan stylegan2)

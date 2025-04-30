@@ -262,6 +262,7 @@ if __name__ == '__main__':
     
     # load model weights
     model = get_model(args.arch)
+    # load linear classifier weights
     state_dict = torch.load(args.ckpt, map_location='cpu')
     model.fc.load_state_dict(state_dict)
     print("Model loaded...")

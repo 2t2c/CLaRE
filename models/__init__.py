@@ -18,6 +18,7 @@ VALID_NAMES = [
     'Imagenet:vit_l_16',
     'Imagenet:vit_l_32',
 
+    # OpenAI CLIP
     'CLIP:RN50', 
     'CLIP:RN101', 
     'CLIP:RN50x4', 
@@ -27,6 +28,11 @@ VALID_NAMES = [
     'CLIP:ViT-B/16', 
     'CLIP:ViT-L/14', 
     'CLIP:ViT-L/14@336px',
+    
+    # OpenCLIP
+    'OpenCLIP:ViT-L/14:datacomp_xl_s13b_b90k',
+    'OpenCLIP:ViT-H/14:laion2b_s32b_b79k',
+    'OpenCLIP:ViT-L/14:dfn2b',
 ]
 
 
@@ -36,8 +42,10 @@ VALID_NAMES = [
 def get_model(name):
     assert name in VALID_NAMES
     if name.startswith("Imagenet:"):
-        return ImagenetModel(name[9:]) 
+        return ImagenetModel(name.split(":")[1]) 
     elif name.startswith("CLIP:"):
-        return CLIPModel(name[5:])  
+        return CLIPModel(name.split(":")[1])  
+    elif name.startswith("OpenCLIP:"):
+        return CLIPModel(name.split(":")[1], pretrained=name.split(":")[2])  
     else:
         assert False 
