@@ -72,7 +72,7 @@ done
 # step 3: unzipping
 for file in *.zip; do
   echo "Unzipping $file"
-  unzip -o "$file" -d "${file%.zip}"
+  unzip -o "$file"
 done
 
 # step 4: dataset configs
@@ -91,3 +91,19 @@ while IFS=$'\t' read -r FILEID FILENAME; do
        -L "https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media" \
        --progress-bar -o "${FILENAME}"
 done
+
+# Datset 4: FaceForensics++
+cd "$ROOT" || exit 1
+mkdir -p "$ROOT/face_forensics"
+cd "$ROOT/face_forensics" || exit 1
+FILEID=1dHJdS0NZ6wpewbGA5B0PdIBS9gz28pdb
+gdown https://drive.google.com/uc?id=$FILEID
+unzip FaceForensics++_real_data_for_DF40.zip 
+
+# Datset 5: Celeb-DF
+cd "$ROOT" || exit 1
+mkdir -p "$ROOT/celeb_df"
+cd "$ROOT/celeb_df" || exit 1
+FILEID=1FGZ3aYsF-Yru50rPLoT5ef8-2Nkt4uBw
+gdown https://drive.google.com/uc?id=$FILEID
+unzip Celeb-DF-v2_real_data_for_DF40.zip
