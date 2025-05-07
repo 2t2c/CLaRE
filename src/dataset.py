@@ -22,8 +22,7 @@ import torch
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 from torch.utils.data import Dataset
-from torchvision import transforms as T
-from utils import *
+from .utils import *
 import albumentations as A
 
 
@@ -101,7 +100,7 @@ class DF40(Dataset):
             'label': self.label_list,
         }
 
-        # self.transform = self.init_data_aug_method()
+        self.transform = self.init_data_aug_method()
 
     def init_data_aug_method(self):
         trans = A.Compose([
@@ -372,7 +371,7 @@ class DF40(Dataset):
         """
         Convert an image to a PyTorch tensor.
         """
-        return T.ToTensor()(img)
+        return transforms.ToTensor()(img)
 
     def normalize(self, img):
         """
@@ -380,7 +379,7 @@ class DF40(Dataset):
         """
         mean = self.config['mean']
         std = self.config['std']
-        normalize = T.Normalize(mean=mean, std=std)
+        normalize = transforms.Normalize(mean=mean, std=std)
         return normalize(img)
 
     def data_aug(self, img, landmark=None, mask=None, augmentation_seed=None):

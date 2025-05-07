@@ -1,30 +1,31 @@
 # imports
+import wandb
+import yaml
+from src.dataset import UFD, DF40, describe_dataloader
+from models import get_model
+from dataset_paths import DATASET_PATHS
+from torch.utils.data import Dataset
+from sklearn.metrics import average_precision_score, accuracy_score
+from scipy.ndimage import gaussian_filter
+from PIL import Image
+import torchvision.transforms as transforms
+import torch.utils.data
+import torch
+import numpy as np
+from io import BytesIO
+from copy import deepcopy
+import shutil
+import random
+import pickle
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import argparse
 import json
 import os
 os.environ["WANDB__SERVICE_WAIT"] = "300"
-import pickle
-import random
-import shutil
-from copy import deepcopy
-from io import BytesIO
 
-import numpy as np
-import torch
-import torch.utils.data
-import torchvision.transforms as transforms
-from PIL import Image
-from scipy.ndimage.filters import gaussian_filter
-from sklearn.metrics import average_precision_score, accuracy_score
-from torch.utils.data import Dataset
-
-from dataset_paths import DATASET_PATHS
-from models import get_model
 
 # logging
-import wandb
 # wandb.login()
 
 # global variables
@@ -72,7 +73,8 @@ def find_best_threshold(y_true, y_pred):
 
 def png2jpg(img, quality):
     out = BytesIO()
-    img.save(out, format='jpeg', quality=quality)  # ranging from 0-95, 75 is default
+    # ranging from 0-95, 75 is default
+    img.save(out, format='jpeg', quality=quality)
     img = Image.open(out)
     # load from memory before ByteIO closes
     img = np.array(img)
@@ -97,24 +99,30 @@ def calculate_acc(y_true, y_pred, thres):
     return r_acc, f_acc, acc
 
 
-def validate(model, loader, find_thres=False):
+def validate(model, loader, find_thres=False, dataset_name=None):
     with torch.no_grad():
         y_true, y_pred = [], []
-        print("Length of dataset: %d" % (len(loader)))
-        for img, label in loader:
-            in_tens = img.cuda()
-
-            y_pred.extend(model(in_tens).sigmoid().flatten().tolist())
-            y_true.extend(label.flatten().tolist())
+        # print("Length of dataset: %d" % (len(loader)))
+        if dataset_name == "df40":
+            for batch in loader:
+                img, label = batch["image"], batch["label"]
+                in_tens = img.cuda()
+                y_pred.extend(model(in_tens).sigmoid().flatten().tolist())
+                y_true.extend(label.flatten().tolist())
+        else:
+            for img, label in loader:
+                in_tens = img.cuda()
+                y_pred.extend(model(in_tens).sigmoid().flatten().tolist())
+                y_true.extend(label.flatten().tolist())
 
     y_true, y_pred = np.array(y_true), np.array(y_pred)
 
-    # ================== save this if you want to plot the curves =========== # 
+    # ================== save this if you want to plot the curves =========== #
     # torch.save( torch.stack( [torch.tensor(y_true), torch.tensor(y_pred)] ),  'baseline_predication_for_pr_roc_curve.pth' )
     # exit()
     # =================================================================== #
 
-    # Get AP 
+    # Get AP
     ap = average_precision_score(y_true, y_pred)
 
     # Acc based on 0.5
@@ -128,138 +136,7 @@ def validate(model, loader, find_thres=False):
 
     return ap, r_acc0, f_acc0, acc0, r_acc1, f_acc1, acc1, best_thres
 
-
-# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = # 
-
-
-def recursively_read(rootdir, must_contain, exts=["png", "jpg", "JPEG", "jpeg", "bmp"]):
-    out = []
-    for r, d, f in os.walk(rootdir):
-        for file in f:
-            if (file.split('.')[1] in exts) and (must_contain in os.path.join(r, file)):
-                out.append(os.path.join(r, file))
-    return out
-
-
-def get_list(path, must_contain=''):
-    if ".pickle" in path:
-        with open(path, 'rb') as f:
-            image_list = pickle.load(f)
-        image_list = [item for item in image_list if must_contain in item]
-    else:
-        image_list = recursively_read(path, must_contain)
-    return image_list
-
-
-class RealFakeDataset(Dataset):
-    def __init__(self, real_path,
-                 fake_path,
-                 data_mode,
-                 max_sample,
-                 arch,
-                 jpeg_quality=None,
-                 gaussian_sigma=None):
-
-        assert data_mode in ["wang2020", "ours"]
-        self.jpeg_quality = jpeg_quality
-        self.gaussian_sigma = gaussian_sigma
-
-        # = = = = = = data path = = = = = = = = = # 
-        if type(real_path) == str and type(fake_path) == str:
-            real_list, fake_list = self.read_path(real_path, fake_path, data_mode, max_sample)
-        else:
-            real_list = []
-            fake_list = []
-            for real_p, fake_p in zip(real_path, fake_path):
-                real_l, fake_l = self.read_path(real_p, fake_p, data_mode, max_sample)
-                real_list += real_l
-                fake_list += fake_l
-
-        self.total_list = real_list + fake_list
-
-        # = = = = = =  label = = = = = = = = = #
-
-        self.labels_dict = {}
-        for i in real_list:
-            self.labels_dict[i] = 0
-        for i in fake_list:
-            self.labels_dict[i] = 1
-
-        stat_from = "imagenet" if arch.lower().startswith("imagenet") else "clip"
-        self.transform = transforms.Compose([
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEAN[stat_from], std=STD[stat_from]),
-        ])
-
-    def read_path(self, real_path, fake_path, data_mode, max_sample):
-
-        if data_mode == 'wang2020':
-            real_list = get_list(real_path, must_contain='0_real')
-            fake_list = get_list(fake_path, must_contain='1_fake')
-        else:
-            real_list = get_list(real_path)
-            fake_list = get_list(fake_path)
-
-        if max_sample is not None:
-            if (max_sample > len(real_list)) or (max_sample > len(fake_list)):
-                max_sample = 100
-                print("not enough images, max_sample falling to 100")
-            random.shuffle(real_list)
-            random.shuffle(fake_list)
-            real_list = real_list[0:max_sample]
-            fake_list = fake_list[0:max_sample]
-
-        assert len(real_list) == len(fake_list)
-
-        return real_list, fake_list
-
-    def __len__(self):
-        return len(self.total_list)
-
-    def __getitem__(self, idx):
-
-        img_path = self.total_list[idx]
-
-        label = self.labels_dict[img_path]
-        img = Image.open(img_path).convert("RGB")
-
-        if self.gaussian_sigma is not None:
-            img = gaussian_blur(img, self.gaussian_sigma)
-        if self.jpeg_quality is not None:
-            img = png2jpg(img, self.jpeg_quality)
-
-        img = self.transform(img)
-        return img, label
-
-
-if __name__ == '__main__':
-    # parse arguments
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--run_name', type=str, default=None, help='wandb run name')
-    parser.add_argument('--real_path', type=str, default=None, help='dir name or a pickle')
-    parser.add_argument('--fake_path', type=str, default=None, help='dir name or a pickle')
-    parser.add_argument('--data_mode', type=str, default=None, help='wang2020 or ours')
-    parser.add_argument('--max_sample', type=int, default=1000,
-                        help='only check this number of images for both fake/real')
-
-    parser.add_argument('--arch', type=str, default='res50')
-    parser.add_argument('--ckpt', type=str, default='./pretrained_weights/fc_weights.pth')
-
-    parser.add_argument('--result_folder', type=str, default='result', help='')
-    parser.add_argument('--batch_size', type=int, default=128)
-
-    parser.add_argument('--jpeg_quality', type=int, default=None,
-                        help="100, 90, 80, ... 30. Used to test robustness of our model. Not apply if None")
-    parser.add_argument('--gaussian_sigma', type=int, default=None,
-                        help="0,1,2,3,4.     Used to test robustness of our model. Not apply if None")
-    args = parser.parse_args()
-    
-    # create result directories
-    # if os.path.exists(args.result_folder):
-    #     shutil.rmtree(args.result_folder)
-    os.makedirs(args.result_folder, exist_ok=True)
-    
+def main(args):
     # load model weights
     model = get_model(args.arch)
     # load linear classifier weights
@@ -272,7 +149,8 @@ if __name__ == '__main__':
     if (args.real_path == None) or (args.fake_path == None) or (args.data_mode == None):
         dataset_paths = DATASET_PATHS
     else:
-        dataset_paths = [dict(real_path=args.real_path, fake_path=args.fake_path, data_mode=args.data_mode)]
+        dataset_paths = [dict(real_path=args.real_path,
+                              fake_path=args.fake_path, data_mode=args.data_mode)]
 
     # creating wandb session
     dataset_type = args.real_path.split('/')[-3]
@@ -281,9 +159,10 @@ if __name__ == '__main__':
     if args.run_name is not None:
         experiment_name = args.run_name + '_' + experiment_name
     wandb.init(
-        project="UniversalFakeDetect",
+        project="debugging",
         entity="FoMo",
-        name=experiment_name + "-" + str(datetime.now(ZoneInfo("Europe/Amsterdam"))),
+        name=experiment_name + "-" +
+        str(datetime.now(ZoneInfo("Europe/Amsterdam"))),
         config={
             "architecture": args.arch,
             "ckpt": args.ckpt,
@@ -294,53 +173,122 @@ if __name__ == '__main__':
             "dataset_name": dataset_name,
         },
         settings=wandb.Settings(_service_wait=300, init_timeout=120))
+
+    # set seed for deterministic results
+    set_seed()
     
-    print(dataset_paths)
-    for dataset_path in (dataset_paths):
-        # set seed for deterministic results
-        set_seed()
-        # load dataset
-        dataset = RealFakeDataset(dataset_path['real_path'],
-                                  dataset_path['fake_path'],
-                                  dataset_path['data_mode'],
-                                  args.max_sample,
-                                  args.arch,
-                                  jpeg_quality=args.jpeg_quality,
-                                  gaussian_sigma=args.gaussian_sigma,
-                                  )
+    # loading dataset
+    if args.dataset == "ufd":
+        dataset = UFD(
+            args.real_path,
+            args.fake_path,
+            args.data_mode,
+            args.max_sample,
+            args.arch,
+            jpeg_quality=args.jpeg_quality,
+            gaussian_sigma=args.gaussian_sigma,)
         loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
-        # run validation
-        ap, r_acc0, f_acc0, acc0, r_acc1, f_acc1, acc1, best_thres = validate(model, loader, find_thres=True)
+    elif args.dataset == "df40":
+        # load the config file
+        with open(args.df40_config, 'r') as f:
+            config = yaml.safe_load(f)
+        if args.df40_name is not None:
+            config['test_dataset'] = args.df40_name
+        dataset = DF40(config=config, mode='test')
+        loader = torch.utils.data.DataLoader(
+            dataset=dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=4,
+            collate_fn=dataset.collate_fn,
+        )
+    describe_dataloader(loader)
+    
+    # run validation
+    ap, r_acc0, f_acc0, acc0, r_acc1, f_acc1, acc1, best_thres = validate(model, loader,
+                                                                          find_thres=True,
+                                                                          dataset_name=args.dataset)
 
-        # log metrics
-        metrics = {
-            "average_precision": ap,
-            "real_accuracy_0.5": r_acc0,
-            "fake_accuracy_0.5": f_acc0,
-            "accuracy_0.5": acc0,
-            "real_accuracy_best": r_acc1,
-            "fake_accuracy_best": f_acc1,
-            "accuracy_best": acc1,
-            "best_threshold": best_thres
-        }
-        wandb.log(metrics)
+    # log metrics
+    metrics = {
+        "average_precision": ap,
+        "real_accuracy_0.5": r_acc0,
+        "fake_accuracy_0.5": f_acc0,
+        "accuracy_0.5": acc0,
+        "real_accuracy_best": r_acc1,
+        "fake_accuracy_best": f_acc1,
+        "accuracy_best": acc1,
+        "best_threshold": best_thres
+    }
+    wandb.log(metrics)
 
-        # export metrics
-        export_path = os.path.join(args.result_folder, f"{dataset_type}_metrics.json")
+    # export metrics
+    export_path = os.path.join(
+        args.result_folder, f"{dataset_type}_metrics.json")
 
-        # read existing or create new
-        if os.path.exists(export_path):
-            with open(export_path, "r") as f:
-                all_metrics = json.load(f)
-        else:
-            all_metrics = {}
+    # read existing or create new
+    if os.path.exists(export_path):
+        with open(export_path, "r") as f:
+            all_metrics = json.load(f)
+    else:
+        all_metrics = {}
 
-        # update by dataset_name key
-        all_metrics[dataset_name] = metrics
+    # update by dataset_name key
+    all_metrics[dataset_name] = metrics
 
-        # save updated
-        with open(export_path, "w") as f:
-            json.dump(all_metrics, f, indent=4)
+    # save updated
+    with open(export_path, "w") as f:
+        json.dump(all_metrics, f, indent=4)
 
-        # exit session
-        wandb.finish()
+    # exit session
+    wandb.finish()
+
+
+if __name__ == '__main__':
+    # parse arguments
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--dataset', type=str,
+                        choices=['ufd', 'df40'], required=True)
+    
+    # wandb arguments
+    parser.add_argument('--project', type=str,
+                        default="debugging", help='wandb run name')
+    parser.add_argument('--run_name', type=str,
+                        default="debug", help='wandb run name')
+    
+    # add UFD-specific arguments
+    parser.add_argument('--real_path', type=str,
+                        default=None, help='dir name or a pickle')
+    parser.add_argument('--fake_path', type=str,
+                        default=None, help='dir name or a pickle')
+    parser.add_argument('--data_mode', type=str,
+                        default=None, help='wang2020 or ours')
+    parser.add_argument('--max_sample', type=int, default=1000,
+                        help='only check this number of images for both fake/real')
+    parser.add_argument('--arch', type=str, default='res50')
+    parser.add_argument('--ckpt', type=str,
+                        default='./pretrained_weights/fc_weights.pth')
+    parser.add_argument('--jpeg_quality', type=int, default=None,
+                        help="100, 90, 80, ... 30. Used to test robustness of our model. Not apply if None")
+    parser.add_argument('--gaussian_sigma', type=int, default=None,
+                        help="0,1,2,3,4. Used to test robustness of our model. Not apply if None")
+    
+    # add DF40-specific config path
+    parser.add_argument("--df40_name", type=str, default=None,
+                        help="DF40 dataset name")
+    parser.add_argument('--df40_config', type=str,
+                        default="./configs/df40/test_config.yaml")
+    
+    # generic params
+    parser.add_argument('--result_folder', type=str, default='result', help='')
+    parser.add_argument('--batch_size', type=int, default=128)
+    args = parser.parse_args()
+
+    # create result directories
+    # if os.path.exists(args.result_folder):
+    #     shutil.rmtree(args.result_folder)
+    os.makedirs(args.result_folder, exist_ok=True)
+
+    # call the main function
+    main(args)
