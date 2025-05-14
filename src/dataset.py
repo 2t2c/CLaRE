@@ -47,7 +47,8 @@ class DF40(Dataset):
     Abstract base class for all deepfake datasets.
     """
 
-    def __init__(self, config=None, mode='train'):
+    def __init__(self, config=None, jpeg_quality=None, 
+                 gaussian_sigma=None, mode='train'):
         """Initializes the dataset object.
 
         Args:
@@ -70,6 +71,9 @@ class DF40(Dataset):
         # Dataset dictionary
         self.image_list = []
         self.label_list = []
+        # Image settings
+        self.jpeg_quality = jpeg_quality
+        self.gaussian_sigma = gaussian_sigma
 
         # Set the dataset dictionary based on the mode
         if mode == 'train':
@@ -314,6 +318,11 @@ class DF40(Dataset):
             if img is None:
                 raise ValueError(
                     'Loaded image is None: {}'.format(file_path))
+        # image processing
+        if self.gaussian_sigma is not None:
+            img = gaussian_blur(img, self.gaussian_sigma)
+        if self.jpeg_quality is not None and file_path.endswith(".png"):
+            img = png2jpg(img, self.jpeg_quality)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
         return Image.fromarray(np.array(img, dtype=np.uint8))
