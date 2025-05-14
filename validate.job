@@ -29,7 +29,7 @@ ARCHITECTURE="CLIP:ViT-L/14"
 # ARCHITECTURE="OpenCLIP:ViT-H/14:laion2b_s32b_b79k"
 
 # RESULT_FOLDER="results/open_clip_vith14_laion2b_s32b_b79k"
-RESULT_FOLDER="results/df40_MidJourney"
+RESULT_FOLDER="results/clip_vitl14"
 
 # DATASET_DIR="$TMPDIR/datasets" # not working, the env. var. changes on sbatch (todo: fix it)
 DATASET_DIR="/scratch-shared/scur0555/datasets" # working
@@ -39,14 +39,18 @@ DATASET_NAME="df40"
 # cnn detection
 DATA_TYPES=(biggan cyclegan gaugan progan seeingdark stylegan whichfaceisreal crn deepfake imle san stargan stylegan2)
 # DF40
-DATA_TYPES=(MidJourney)
+# cdf and ff
+DATA_TYPES=(fsgan faceswap simswap inswap blendface uniface mobileswap e4s facedancer fomm facevid2vid wav2lip MRAA one_shot_free pirender tpsm lia danet sadtalker mcnet VQGAN StyleGAN2 StyleGAN3 StyleGANXL sd2.1 ddim PixArt DiT SiT)
+# real and fake
+DATA_TYPES=(heygen MidJourney whichfaceisreal stargan starganv2 styleclip e4e CollabDiff)
+# DATA_TYPES=(whichisreal stargan)
 
 # debug
 # DATA_TYPES=(biggan)
 
 for DATA_TYPE in "${DATA_TYPES[@]}"; do
   srun python validate.py \
-    --project "debugging" \
+    --project "UniversalFakeDetect" \
     --run_name "validation" \
     --dataset "$DATASET_NAME" \
     --arch "$ARCHITECTURE" \

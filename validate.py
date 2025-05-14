@@ -159,7 +159,7 @@ def main(args):
     if args.run_name is not None:
         experiment_name = args.run_name + '_' + experiment_name
     wandb.init(
-        project="debugging",
+        project=args.project,
         entity="FoMo",
         name=experiment_name + "-" +
         str(datetime.now(ZoneInfo("Europe/Amsterdam"))),
