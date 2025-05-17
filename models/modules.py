@@ -5,9 +5,9 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torchvision.ops import MultiScaleRoIAlign, roi_pool, roi_align
 
-
-def encode_image(self, image):
+def clip_encode_image(self, image):
     """
     Encodes the image using the visual CLIP model.
     """
@@ -36,6 +36,20 @@ def clip_forward(self, x):
 
     return x, x_l3
 
+
+class ROIPooler(nn.Module):
+    def __init__(self, output_size=(14, 14), align=True):
+        super(ROIPooler, self).__init__()
+        self.output_size = output_size
+        self.align = align
+
+    def forward(self, feature_map, rois):
+        # perform ROI pooling
+        if self.align:
+            return roi_align(feature_map, rois, output_size=self.output_size, 
+                             aligned=self.align)
+        else:
+            return roi_pool(feature_map, rois, output_size=self.output_size)
 
 class PoolWithMap(nn.Module):
     def __init__(self, spacial_dim: int, embed_dim: int, num_heads: int, output_dim: int = None):

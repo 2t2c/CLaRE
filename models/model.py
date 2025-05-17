@@ -5,30 +5,21 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from modules import (clip_forward, encode_image, ChannelAlignLayer,
-                     MultiHeadMapAttention)
+from .modules import (clip_forward, clip_encode_image, ChannelAlignLayer,
+                      MultiHeadMapAttention, ROIPooler)
 
 
 class CLIPModel(nn.Module):
-    def __init__(self, name, pretrained=None, num_class=4):
+    def __init__(self, name, pretrained=None, num_class=2):
         super(CLIPModel, self).__init__()
         self.name = name
         if pretrained:
-            self.model, _, self.preprocess = open_clip.create_model_and_transforms(name,
-                                                                                   pretrained=pretrained,
-                                                                                   device="cpu")
+            self.clip_model, _, self.preprocess = open_clip.create_model_and_transforms(name,
+                                                                                        pretrained=pretrained,
+                                                                                        device="cpu")
         else:
-            self.model, self.preprocess = clip.load(name, device="cpu")
-        # self.output_layer = Sequential(
-        #     nn.Linear(1024, 1280),
-        #     nn.GELU(),
-        #     nn.Linear(1280, 512),
-        # )
-        # self.fc = nn.Linear(512, num_class)
-        # self.text_input = clip.tokenize(['Real', 'Synthetic'])
-        self.text_input = clip.tokenize(['Real Photo', 'Synthetic Photo', 'Real Painting', 'Synthetic Painting'])
-        # self.text_input = clip.tokenize(['Real-Photo', 'Synthetic-Photo', 'Real-Painting', 'Synthetic-Painting'])
-        # self.text_input = clip.tokenize(['a', 'b', 'c', 'd'])
+            self.clip_model, self.preprocess = clip.load(name, device="cpu")
+        self.text_input = clip.tokenize(["Real Photo", "Fake Photo"])
 
     def forward(self, image_input, training=True):
         if training:
@@ -40,41 +31,77 @@ class CLIPModel(nn.Module):
             return None, image_feats
 
 
-class CLipClassifierWMap(nn.Module):
+class CLIPClassifierWMap(nn.Module):
     """
-    Version 6 from LaRE
+    Version 6 from LaRE model.py
     """
 
-    def __init__(self, name, pretrained=None, num_class=4):
-        super(CLipClassifierWMap, self).__init__()
+    def __init__(self, name, pretrained=None, num_classes=2, roi_pooling=False):
+        super(CLIPClassifierWMap, self).__init__()
+        self.multiplier = 3
         if pretrained:
-            self.model, _, self.preprocess = open_clip.create_model_and_transforms(name,
-                                                                                   pretrained=pretrained,
-                                                                                   device="cpu")
+            self.clip_model, _, self.preprocess = open_clip.create_model_and_transforms(name,
+                                                                                        pretrained=pretrained,
+                                                                                        device="cpu")
         else:
-            self.model, self.preprocess = clip.load(name, device="cpu")
-        # self.text_input = clip.tokenize(['Real Photo', 'Synthetic Photo', 'Real Painting', 'Synthetic Painting'])
-        self.fc = nn.Linear(1024 + 1024 + 1024, 2)
-        # self.visual_attnpool = self.clip_model.visual.attnpool
-        # Monkey patch
+            self.clip_model, self.preprocess = clip.load(name, device="cpu")
+        self.text_input = clip.tokenize(["Real Photo", "Fake Photo"])
+        # overriding the methods of clip
         self.clip_model.visual.forward = clip_forward
-        self.clip_model.encode_image = encode_image
-
+        self.clip_model.encode_image = clip_encode_image
+        # conv. + attention + alignment
         self.conv = nn.Conv2d(4, 8, kernel_size=(1, 1))  # for 8 heads
         self.conv_align = nn.Conv2d(4, 1024, kernel_size=(1, 1))
         self.attn_pool = MultiHeadMapAttention()
         self.channel_align = ChannelAlignLayer(4, 128, 1024)
+        # roi pooling
+        self.roi_pooling = roi_pooling
+        if self.roi_pooling:
+            self.roi_pool = ROIPooler(output_size=(14, 14), align=True)
+            self.pool = nn.AdaptiveAvgPool2d((1, 1))
+            self.multiplier = 4
+        # projection
+        self.fc = nn.Linear(1024 * self.multiplier, num_classes)
 
-    def forward(self, image_input, loss_map):
-        # loss_map bs * 4 * 32 * 32
-        image_feats, block3_feats = self.clip_model.encode_image(self.clip_model, image_input)
-        # block3 bs * 1024 * 14 * 14
-        aligned_loss_map = F.adaptive_avg_pool2d(loss_map, (14, 14))  # bs * 4 * 14 * 14
-        pooled_loss_map = self.conv(aligned_loss_map)  # bs * 8 * 14 * 14
-        pooled_block3_feats = self.attn_pool(block3_feats, pooled_loss_map)  # bs * 1024
+    def forward(self, image, loss_map, rois=None):
+        # image - (B,C,H,W) | loss_map - (B,4,32,32)
+        image_feats, block3_feats = self.clip_model.encode_image(self.clip_model, image)
+        # block3 - (B,1024,14,14)
+        aligned_loss_map = F.adaptive_avg_pool2d(loss_map, (14, 14))  # (B,4,14,14)
+        pooled_loss_map = self.conv(aligned_loss_map)  # (B,8,14,14)
+        pooled_block3_feats = self.attn_pool(block3_feats, pooled_loss_map)  # (B,1024)
+        channel_weighted_feats = self.channel_align(block3_feats, loss_map)  # (B,1024)
 
-        channel_weighted_feats = self.channel_align(block3_feats, loss_map)  # bs * 1024
-        logits = self.fc(torch.cat([image_feats, pooled_block3_feats, channel_weighted_feats], dim=1))
+        # in case BS is 1, for debugging
+        if pooled_block3_feats.dim() == 1:
+            pooled_block3_feats = pooled_block3_feats.unsqueeze(0)
+        if channel_weighted_feats.dim() == 1:
+            channel_weighted_feats = channel_weighted_feats.unsqueeze(0)
+
+        if self.roi_pooling:
+            # ROI pooling
+            roi_feats = self.roi_pool(block3_feats, rois)  # (N_rois, 1024, 14, 14)
+            roi_feats = self.pool(roi_feats).squeeze(-1).squeeze(-1)  # (N_rois, 1024)
+
+            # aggregate ROI features per image
+            batch_size = image.shape[0]
+            aggregated_roi_feats = []
+            roi_offset = 0
+            for b in range(batch_size):
+                num_rois = sum(r[0].item() == b for r in rois)
+                if num_rois == 0:
+                    aggregated_roi_feats.append(torch.zeros_like(image_feats[b]))
+                else:
+                    feats = roi_feats[roi_offset:roi_offset + num_rois]
+                    aggregated_roi_feats.append(feats.mean(dim=0))
+                    roi_offset += num_rois
+            roi_feats = torch.stack(aggregated_roi_feats)  # (B, 1024)
+            features = torch.cat([image_feats, pooled_block3_feats, channel_weighted_feats, roi_feats], dim=1) # (B, 1024*multiplier)
+        else:
+            features = torch.cat([image_feats, pooled_block3_feats, channel_weighted_feats], dim=1)  # (B, 1024*multiplier)
+
+        logits = self.fc(features)
+
         return logits
 
 

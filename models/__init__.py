@@ -1,4 +1,4 @@
-from .model import CLIPModel
+from .model import CLIPModel, CLIPClassifierWMap
 
 VALID_NAMES = [
     # OpenAI CLIP
@@ -19,11 +19,20 @@ VALID_NAMES = [
 ]
 
 
-def get_model(name):
+def get_model(name, type=None, roi_pooling=False):
     assert name in VALID_NAMES
     if name.startswith("CLIP:"):
-        return CLIPModel(name.split(":")[1])
+        if type == "wmap":
+            return CLIPClassifierWMap(name.split(":")[1],
+                                      roi_pooling=roi_pooling)
+        else:
+            return CLIPModel(name.split(":")[1])
     elif name.startswith("OpenCLIP:"):
-        return CLIPModel(name.split(":")[1], pretrained=name.split(":")[2])
+        if type == "wmap":
+            return CLIPClassifierWMap(name.split(":")[1], 
+                                      pretrained=name.split(":")[2],
+                                      roi_pooling=roi_pooling)
+        else:
+            return CLIPModel(name.split(":")[1], pretrained=name.split(":")[2])
     else:
         assert False
