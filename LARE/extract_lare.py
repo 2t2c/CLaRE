@@ -1,3 +1,9 @@
+# imports
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join("..")))
+from src.utils import display_args
+from rich import print as rprint
 import argparse
 import json
 import multiprocessing as mp
@@ -22,6 +28,7 @@ from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel
 from torchvision import transforms
 from tqdm.auto import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
+
 
 
 class GenImageProcessor:
@@ -50,7 +57,9 @@ class GenImageProcessor:
         image_path, label = info.strip().split('\t')
         filename = Path(image_path).name
         folder_or_index = filename.split('_')[0]
-
+        if 'df40' in image_path:
+            clsname_simple = 'real' if 'real' in image_path else 'fake'
+            return image_path, label, filename, clsname_simple
         try:
             if len(folder_or_index) <= 3:  # is a index
                 index = str(int(folder_or_index))
@@ -121,7 +130,8 @@ def main(args, input_infos, device):
     genimage_processor = GenImageProcessor()
     for info in tqdm(input_infos):
         image_path, label, filename, clsname = genimage_processor(info, use_full_name=args.use_full_clsname)
-        save_path = opj(args.output_path, filename.split('.')[0] + '.pt')
+        # save_path = opj(args.output_path, filename.split('.')[0] + '.pt')
+        save_path = opj(args.output_path, clsname + "_" + filename.split('.')[0] + '.pt')
         try:
             img = Image.open(image_path).convert('RGB')
         except PIL.UnidentifiedImageError:
@@ -192,7 +202,7 @@ def split_list(lst, n):
 if __name__ == '__main__':
     mp.set_start_method('spawn')
     parser = argparse.ArgumentParser(
-        description='''extract dift from input image, and save it as torch tenosr,
+        description='''Extract dift from input image, and save it as torch tenosr,
                     in the shape of [c, h, w].''')
 
     parser.add_argument('--img_size', nargs='+', type=int, default=[512, 512],
@@ -215,8 +225,10 @@ if __name__ == '__main__':
                         help='prompt used in the stable diffusion')
     parser.add_argument('--ensemble_size', default=8, type=int,
                         help='number of repeated images in each batch used to get features')
-    parser.add_argument('--input_path', type=str,
-                        help='paths to the input image file')
+    # parser.add_argument('--input_path', type=str,
+    #                     help='paths to the input image file')
+    parser.add_argument('--json_path', type=str,
+                        help='paths to the input json config file')
     parser.add_argument('--output_path', type=str, default='dift.pt',
                         help='path to save the outputs features as torch tensor')
     parser.add_argument('--n-gpus', type=int, default=1,
@@ -224,27 +236,49 @@ if __name__ == '__main__':
     parser.add_argument('--dtype', type=str, default='fp32',
                         help='paths to the input image file')
     args = parser.parse_args()
+    display_args(args)
+
+    # load dataset
+    TEST_DATA_PATH = '/scratch-shared/scur0555/datasets/df40/test/'
+    json_path = args.json_path
+    with open(json_path, "r") as file:
+        data = json.load(file)
+        dataset_name = json_path.split("/")[-1].split(".")[0]
+
+    # with open(f"{dataset_name}.txt", "w") as file:
+    input_infos = []
+    for label_type in ['Real', 'Fake']:
+        test_data = data[dataset_name][dataset_name + "_" + label_type]['test']
+        for key in test_data:
+            label = 0 if label_type == 'Real' else 1
+            img_paths = test_data[key]['frames']
+            for img_path in img_paths:
+                input_infos.append(
+                    img_path.replace("deepfakes_detection_datasets/DF40/", TEST_DATA_PATH) + " " + str(label))
+                # file.write(img_path.replace("deepfakes_detection_datasets/", "") + " " + str(label) + "\n")
 
     # prepare
-    setattr(args, 'output_path', os.path.abspath(args.output_path))
-    print('create folder:', args.output_path)
+    setattr(args, 'output_path', os.path.abspath(args.output_path + f'/{dataset_name}'))
+    # setattr(args, 'output_path', os.path.abspath(args.output_path))
+    rprint('create folder:', args.output_path)
     if not os.path.exists(args.output_path):
         os.mkdir(args.output_path)
 
     if args.use_prompt_template:
-        print(f'use prompt: {args.prompt_template}')
+        rprint(f'use prompt: {args.prompt_template}')
     else:
-        print(f'use prompt: {args.prompt}')
+        rprint(f'use prompt: {args.prompt}')
 
-    with open(args.input_path) as f:
-        input_infos = f.readlines()
+    # with open(args.input_path) as f:
+    #     input_infos = f.readlines()
 
     # preprocess anns
     genimage_processor = GenImageProcessor()
     out_infos = []
     for info in tqdm(input_infos):
         image_path, label, filename, clsname = genimage_processor(info, use_full_name=args.use_full_clsname)
-        save_path = opj(args.output_path, filename.split('.')[0] + '.pt')
+        # save_path = opj(args.output_path, filename.split('.')[0] + '.pt')
+        save_path = opj(args.output_path, clsname + "_" + filename.split('.')[0] + '.pt')
         out_info = '\t'.join([save_path, label]) + '\n'
         out_infos.append(out_info)
     info_save_path = opj(args.output_path, 'ann.txt')
@@ -260,4 +294,4 @@ if __name__ == '__main__':
     # main(args, splited_infos[0], "cuda:0")
     with mp.Pool(processes=num_gpus) as pool:
         pool.starmap(main, [(args, splited_infos[i], f"cuda:{i}") for i in range(num_gpus)])
-    print("Done")
+    rprint("Successfully extract features from input images!")

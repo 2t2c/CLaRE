@@ -9,10 +9,10 @@ from io import BytesIO
 import random
 
 import cv2
-import numpy as np
 from albumentations import DualTransform, ImageOnlyTransform
 from albumentations.augmentations.crops.functional import crop
-
+from rich.table import Table
+from rich.console import Console
 
 def isotropically_resize_image(img, size, interpolation_down=cv2.INTER_AREA, interpolation_up=cv2.INTER_CUBIC):
     h, w = img.shape[:2]
@@ -165,3 +165,26 @@ def create_bbox_face(image, landmarks, margin=0):
     face = image[min_y:max_y, min_x:max_x]
 
     return face
+
+
+def display_args(args, title="Arguments"):
+    """
+    Nicely print argparse.Namespace or dict using rich.
+
+    :param:
+        args: argparse.Namespace or dict
+    :param:
+        title: Optional table title
+    """
+    if not isinstance(args, dict):
+        args = vars(args)
+
+    table = Table(title=title)
+    table.add_column("Argument", style="cyan", no_wrap=True)
+    table.add_column("Value", style="magenta")
+
+    for key, value in args.items():
+        table.add_row(str(key), str(value))
+
+    console = Console()
+    console.print(table)

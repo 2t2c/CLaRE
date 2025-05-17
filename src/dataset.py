@@ -22,7 +22,12 @@ import torch
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 from torch.utils.data import Dataset
-from .utils import *
+try:
+    # Relative import for package use
+    from .utils import *
+except ImportError:
+    # Fallback for direct script execution
+    from utils import *
 import albumentations as A
 
 
@@ -779,6 +784,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=1)
 
     args = parser.parse_args()
+    display_args(args)
 
     if args.dataset == "ufd":
         dataset = UFD(

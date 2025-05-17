@@ -1,7 +1,11 @@
 # imports
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join("..")))
 import wandb
 import yaml
 from src.dataset import UFD, DF40, describe_dataloader
+from src.utils import display_args
 from models import get_model
 from dataset_paths import DATASET_PATHS
 from torch.utils.data import Dataset
@@ -249,7 +253,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--dataset', type=str,
-                        choices=['ufd', 'df40'], required=True)
+                        choices=['ufd', 'df40'], default="df40")
     
     # wandb arguments
     parser.add_argument('--project', type=str,
@@ -266,7 +270,7 @@ if __name__ == '__main__':
                         default=None, help='wang2020 or ours')
     parser.add_argument('--max_sample', type=int, default=1000,
                         help='only check this number of images for both fake/real')
-    parser.add_argument('--arch', type=str, default='res50')
+    parser.add_argument('--arch', type=str, default='CLIP:ViT-L/14')
     parser.add_argument('--ckpt', type=str,
                         default='./pretrained_weights/fc_weights.pth')
     parser.add_argument('--jpeg_quality', type=int, default=None,
@@ -291,4 +295,5 @@ if __name__ == '__main__':
     os.makedirs(args.result_folder, exist_ok=True)
 
     # call the main function
+    display_args(args)
     main(args)

@@ -5,7 +5,7 @@ This project explores multimodal approaches for deepfake detection by integratin
 ## Project Structure
 
 * Modules
-  * [`LaRE/`](LaRE): Latent Reconstruction Error
+  * [`LARE/`](LaRE): Latent Reconstruction Error
   * [`UFD/`](UFD): UniversalFakeDetect integration
 * General 
   * [`configs/`](configs): Configuration files for experiments
@@ -85,4 +85,3 @@ LaRE ──> Stage 1 (*) ──> Stage 2 (**) ───┘
 * [2] [LaRE2: Latent Reconstruction Error Based Method for Diffusion-Generated Image Detection](https://github.com/luo3300612/lare)
 * [3] [CLIPping the Deception: Adapting Vision-Language Models for Universal Deepfake Detection](https://github.com/sfimediafutures/CLIPping-the-Deception)
 * [4] [DF40: Toward Next-Generation Deepfake Detection](https://github.com/YZY-stack/DF40)
----
