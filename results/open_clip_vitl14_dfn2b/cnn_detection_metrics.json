@@ -1,0 +1,132 @@
+{
+    "biggan": {
+        "average_precision": 0.4711403824631485,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.047,
+        "fake_accuracy_best": 0.969,
+        "accuracy_best": 0.508,
+        "best_threshold": 0.33067986369132996
+    },
+    "cyclegan": {
+        "average_precision": 0.47416033357483256,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.307,
+        "fake_accuracy_best": 0.711,
+        "accuracy_best": 0.509,
+        "best_threshold": 0.38132643699645996
+    },
+    "gaugan": {
+        "average_precision": 0.4797179888925844,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.207,
+        "fake_accuracy_best": 0.845,
+        "accuracy_best": 0.526,
+        "best_threshold": 0.3512495458126068
+    },
+    "progan": {
+        "average_precision": 0.40910058847918984,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.016,
+        "fake_accuracy_best": 0.986,
+        "accuracy_best": 0.501,
+        "best_threshold": 0.31519007682800293
+    },
+    "seeingdark": {
+        "average_precision": 0.4189999567464342,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 1.0,
+        "fake_accuracy_best": 0.0,
+        "accuracy_best": 0.5,
+        "best_threshold": 0.4052206873893738
+    },
+    "stylegan": {
+        "average_precision": 0.3700255214849495,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.0,
+        "fake_accuracy_best": 0.999,
+        "accuracy_best": 0.4995,
+        "best_threshold": 0.2999156713485718
+    },
+    "whichfaceisreal": {
+        "average_precision": 0.33769947286955104,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.0,
+        "fake_accuracy_best": 0.999,
+        "accuracy_best": 0.4995,
+        "best_threshold": 0.3310180604457855
+    },
+    "stargan": {
+        "average_precision": 0.3652287158231066,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.0,
+        "fake_accuracy_best": 0.999,
+        "accuracy_best": 0.4995,
+        "best_threshold": 0.32234302163124084
+    },
+    "stylegan2": {
+        "average_precision": 0.387513997018189,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.006,
+        "fake_accuracy_best": 0.999,
+        "accuracy_best": 0.5025,
+        "best_threshold": 0.3087170422077179
+    },
+    "crn": {
+        "average_precision": 0.42322501050951533,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.014,
+        "fake_accuracy_best": 0.989,
+        "accuracy_best": 0.5015,
+        "best_threshold": 0.32409054040908813
+    },
+    "deepfake": {
+        "average_precision": 0.4037913697288235,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.0,
+        "fake_accuracy_best": 0.999,
+        "accuracy_best": 0.4995,
+        "best_threshold": 0.31039151549339294
+    },
+    "imle": {
+        "average_precision": 0.44950495789002753,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.013,
+        "fake_accuracy_best": 0.987,
+        "accuracy_best": 0.5,
+        "best_threshold": 0.32383954524993896
+    },
+    "san": {
+        "average_precision": 0.38579609337615495,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.0,
+        "accuracy_0.5": 0.5,
+        "real_accuracy_best": 0.01,
+        "fake_accuracy_best": 0.99,
+        "accuracy_best": 0.5,
+        "best_threshold": 0.32203051447868347
+    }
+}

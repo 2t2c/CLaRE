@@ -1,0 +1,72 @@
+{
+    "heygen": {
+        "average_precision": 0.8432817971885822,
+        "real_accuracy_0.5": 1.0,
+        "fake_accuracy_0.5": 0.03676470588235294,
+        "accuracy_0.5": 0.5136138613861386,
+        "real_accuracy_best": 0.8225,
+        "fake_accuracy_best": 0.6813725490196079,
+        "accuracy_best": 0.7512376237623762,
+        "best_threshold": 0.0027250759303569794
+    },
+    "MidJourney": {
+        "average_precision": 0.601267699750129,
+        "real_accuracy_0.5": 0.982089552238806,
+        "fake_accuracy_0.5": 0.28164196123147095,
+        "accuracy_0.5": 0.6556854410201913,
+        "real_accuracy_best": 0.9970149253731343,
+        "fake_accuracy_best": 0.2759407069555302,
+        "accuracy_best": 0.6609989373007439,
+        "best_threshold": 0.8362390398979187
+    },
+    "starganv2": {
+        "average_precision": 0.8613564049429165,
+        "real_accuracy_0.5": 0.8873873873873874,
+        "fake_accuracy_0.5": 0.6173826173826173,
+        "accuracy_0.5": 0.75225,
+        "real_accuracy_best": 0.7257257257257257,
+        "fake_accuracy_best": 0.8626373626373627,
+        "accuracy_best": 0.79425,
+        "best_threshold": 0.19914159178733826
+    },
+    "styleclip": {
+        "average_precision": 0.9495203788153523,
+        "real_accuracy_0.5": 0.926,
+        "fake_accuracy_0.5": 0.5775495750708215,
+        "accuracy_0.5": 0.6686715481171548,
+        "real_accuracy_best": 0.62,
+        "fake_accuracy_best": 0.919971671388102,
+        "accuracy_best": 0.8415271966527197,
+        "best_threshold": 0.04392990469932556
+    },
+    "CollabDiff": {
+        "average_precision": 0.6109708403241119,
+        "real_accuracy_0.5": 0.922,
+        "fake_accuracy_0.5": 0.138,
+        "accuracy_0.5": 0.53,
+        "real_accuracy_best": 0.472,
+        "fake_accuracy_best": 0.769,
+        "accuracy_best": 0.6205,
+        "best_threshold": 0.0179250817745924
+    },
+    "whichisreal": {
+        "average_precision": 0.8145295648377318,
+        "real_accuracy_0.5": 0.969,
+        "fake_accuracy_0.5": 0.19080919080919082,
+        "accuracy_0.5": 0.5797101449275363,
+        "real_accuracy_best": 0.705,
+        "fake_accuracy_best": 0.8521478521478522,
+        "accuracy_best": 0.7786106946526736,
+        "best_threshold": 0.028542838990688324
+    },
+    "stargan": {
+        "average_precision": 0.979344796292535,
+        "real_accuracy_0.5": 0.8780241935483871,
+        "fake_accuracy_0.5": 0.9606854838709677,
+        "accuracy_0.5": 0.9193548387096774,
+        "real_accuracy_best": 0.9259072580645161,
+        "fake_accuracy_best": 0.9334677419354839,
+        "accuracy_best": 0.9296875,
+        "best_threshold": 0.6921563744544983
+    }
+}

@@ -104,7 +104,8 @@ class DF40(Dataset):
             'label': self.label_list,
         }
 
-        self.transform = self.init_data_aug_method()
+        # need to fix this for training
+        # self.transform = self.init_data_aug_method()
 
     def init_data_aug_method(self):
         trans = A.Compose([
