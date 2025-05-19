@@ -49,7 +49,7 @@ unzip diffusion_datasets.zip
 rm diffusion_datasets.zip
 
 
-# Datset 3: DF40 (test set)
+# Datset 3: DF40 (test set, 40 .zip files in total)
 cd "$ROOT" || exit 1
 mkdir -p "$ROOT/df40/train" "$ROOT/df40/val" "$ROOT/df40/test"
 cd "$ROOT/df40/test" || exit 1
@@ -81,7 +81,7 @@ done
 # e4e.zip -> 7z x -y file.zip
 
 
-# Datset 3: DF40 (train set)
+# Datset 3: DF40 (train set, 31 .zip files in total)
 cd "$ROOT/df40/train" || exit 1
 FOLDERID=1U8meBbqVvmUkc5GD0jxct6xe6Gwk9wKD
 # follow this: https://stackoverflow.com/questions/65312867/how-to-download-large-file-from-google-drive-from-terminal-gdown-doesnt-work
@@ -112,13 +112,17 @@ done
 # step 4: dataset configs
 cd "$ROOT/df40" || exit 1
 mkdir -p "$ROOT/df40/configs"
-cd "$ROOT/df40/configs" || exit 1
 FOLDERID=19VhAL4aDJOKvhl9stEq_ymFeHiXo6_j-
 # gdown --folder https://drive.google.com/drive/folders/$FOLDERID --remaining-ok
 
-curl -s -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  "https://www.googleapis.com/drive/v3/files?q='${FOLDERID}'+in+parents+and+trashed=false&fields=files(id,name,mimeType)" | \
-jq -r '.files[] | select(.mimeType != "application/vnd.google-apps.folder" and (.name | endswith(".json"))) | [.id, .name] | @tsv' | \
+# step 4.1: save the files inside the folder to a .json object
+curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "https://www.googleapis.com/drive/v3/files?q='$FOLDERID'+in+parents+and+trashed=false&fields=files(id,name,mimeType)" \
+  -o df40_config_files.json
+
+# step 4.2: download configs (82 files in total)
+cd "$ROOT/df40/configs" || exit 1
+jq -r '.files[] | select(.mimeType != "application/vnd.google-apps.folder" and (.name | endswith(".json"))) | [.id, .name] | @tsv' ../df40_config_files.json | \
 while IFS=$'\t' read -r FILEID FILENAME; do
   echo "Downloading $FILENAME"
   curl -H "Authorization: Bearer ${ACCESS_TOKEN}" \
