@@ -53,6 +53,8 @@ STD = {
 FFpp_pool = ['FaceForensics++', 'FaceShifter',
              'DeepFakeDetection', 'FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT']
 
+# dataset directory
+DATASET_DIR = "/scratch-shared/scur0555/datasets"
 
 class DF40(Dataset):
     """
@@ -117,36 +119,47 @@ class DF40(Dataset):
         }
 
         # need to fix this for training
-        # self.transform = self.init_data_aug_method()
+        self.transform = self.init_data_aug_method()
 
     def init_data_aug_method(self):
-        trans = A.Compose([
-            A.HorizontalFlip(p=self.config['data_aug']['flip_prob']),
-            A.Rotate(limit=self.config['data_aug']['rotate_limit'],
-                     p=self.config['data_aug']['rotate_prob']),
-            A.GaussianBlur(
-                blur_limit=self.config['data_aug']['blur_limit'], p=self.config['data_aug']['blur_prob']),
-            A.OneOf([
+        resize_block = []
+        if not self.config['with_landmark']:
+            resize_block = [random.choice([
                 IsotropicResize(
-                    max_side=self.config['resolution'], interpolation_down=cv2.INTER_AREA, interpolation_up=cv2.INTER_CUBIC),
+                    max_side=self.config['resolution'],
+                    interpolation_down=cv2.INTER_AREA,
+                    interpolation_up=cv2.INTER_CUBIC),
                 IsotropicResize(
-                    max_side=self.config['resolution'], interpolation_down=cv2.INTER_AREA, interpolation_up=cv2.INTER_LINEAR),
+                    max_side=self.config['resolution'],
+                    interpolation_down=cv2.INTER_AREA,
+                    interpolation_up=cv2.INTER_LINEAR),
                 IsotropicResize(
-                    max_side=self.config['resolution'], interpolation_down=cv2.INTER_LINEAR, interpolation_up=cv2.INTER_LINEAR),
-            ], p=0 if self.config['with_landmark'] else 1),
-            A.OneOf([
-                A.RandomBrightnessContrast(
-                    brightness_limit=self.config['data_aug']['brightness_limit'], contrast_limit=self.config['data_aug']['contrast_limit']),
-                A.FancyPCA(),
-                A.HueSaturationValue()
-            ], p=0.5),
-            A.ImageCompression(quality_lower=self.config['data_aug']['quality_lower'],
-                               quality_upper=self.config['data_aug']['quality_upper'], p=0.5)
-        ],
-            keypoint_params=A.KeypointParams(
-                format='xy') if self.config['with_landmark'] else None
+                    max_side=self.config['resolution'],
+                    interpolation_down=cv2.INTER_LINEAR,
+                    interpolation_up=cv2.INTER_LINEAR),
+            ])]
+
+        transformations = A.Compose([
+                A.HorizontalFlip(p=self.config['data_aug']['flip_prob']),
+                A.Rotate(limit=self.config['data_aug']['rotate_limit'],
+                        p=self.config['data_aug']['rotate_prob']),
+                A.GaussianBlur(
+                    blur_limit=self.config['data_aug']['blur_limit'], p=self.config['data_aug']['blur_prob']),
+                *resize_block,
+                A.OneOf([
+                    A.RandomBrightnessContrast(
+                        brightness_limit=self.config['data_aug']['brightness_limit'], contrast_limit=self.config['data_aug']['contrast_limit']),
+                    A.FancyPCA(),
+                    A.HueSaturationValue()
+                ], p=0.5),
+                A.ImageCompression(quality_lower=self.config['data_aug']['quality_lower'],
+                                quality_upper=self.config['data_aug']['quality_upper'], p=0.5)
+            ],
+                keypoint_params=A.KeypointParams(
+                    format='xy') if self.config['with_landmark'] else None
         )
-        return trans
+        
+        return transformations
 
     def collect_img_and_label_for_one_dataset(self, dataset_name: str):
         """Collects image and label lists.
@@ -490,11 +503,13 @@ class DF40(Dataset):
             try:
                 # replace the hard-coded paths from the config
                 image_path = image_path.replace("deepfakes_detection_datasets/FaceForensics++",
-                                                f"/scratch-shared/scur0555/datasets/face_forensics/FaceForensics++")
+                                                f"{DATASET_DIR}/face_forensics/FaceForensics++")
                 image_path = image_path.replace("deepfakes_detection_datasets/Celeb-DF-v2",
-                                                f"/scratch-shared/scur0555/datasets/celeb_df/Celeb-DF-v2")
+                                                f"{DATASET_DIR}/celeb_df/Celeb-DF-v2")
+                image_path = image_path.replace("deepfakes_detection_datasets/DF40_train",
+                                f"{DATASET_DIR}/df40/{self.mode}")
                 image_path = image_path.replace("deepfakes_detection_datasets/DF40",
-                                                f"/scratch-shared/scur0555/datasets/df40/{self.mode}")
+                                                f"{DATASET_DIR}/df40/{self.mode}")
                 image = self.load_rgb(image_path)
             except Exception as e:
                 # Skip this image and return the first one
@@ -866,7 +881,7 @@ def describe_dataloader(dataloader):
 
     table = Table(title="DataLoader Summary")
 
-    table.add_column("Property", style="bold cyan")
+    table.add_column("Property", style="cyan")
     table.add_column("Value", style="magenta")
     table.add_row("Total samples", str(total_samples))
     table.add_row(f"Total batches (batch_size={dataloader.batch_size})", str(total_batches))
@@ -912,7 +927,8 @@ def describe_dataloader(dataloader):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str,
-                        choices=['ufd', 'df40'], required=True)
+                        choices=['ufd', 'df40'], 
+                        default='df40')
     # add UFD-specific arguments
     parser.add_argument('--real_path', type=str,
                         default=None, help='dir name or a pickle')
@@ -928,10 +944,14 @@ if __name__ == "__main__":
     parser.add_argument('--gaussian_sigma', type=int, default=None,
                         help="0,1,2,3,4.     Used to test robustness of our model. Not apply if None")
     # add DF40-specific config path
+    parser.add_argument("--df40_mode", type=str, 
+                    choices=['train', 'test'], default="train",
+                    help="DF40 dataset mode name")
     parser.add_argument("--df40_name", type=str, default=None,
                         help="DF40 dataset name")
     parser.add_argument('--df40_config', type=str,
-                        default="./configs/df40/test_config.yaml")
+                        default="train_config.yaml",
+                        help="DF40 mode config")
     # generic params
     parser.add_argument('--batch_size', type=int, default=1)
 
@@ -954,15 +974,15 @@ if __name__ == "__main__":
         )
     elif args.dataset == "df40":
         # load the config file
-        with open(args.df40_config, 'r') as f:
+        with open("./configs/df40/" + args.df40_config, 'r') as f:
             config = yaml.safe_load(f)
         if args.df40_name is not None:
-            config['test_dataset'] = args.df40_name
-        dataset = DF40(config=config, mode='test')
+            config[f'{args.df40_mode}_dataset'] = args.df40_name
+        dataset = DF40(config=config, mode=args.df40_mode)
         loader = torch.utils.data.DataLoader(
             dataset=dataset,
             batch_size=args.batch_size,
-            shuffle=False,
+            shuffle=True if args.df40_mode == "train" else False,
             num_workers=4,
             collate_fn=dataset.collate_fn,
         )
