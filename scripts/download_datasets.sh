@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # load modules
+module load 2024
 module load p7zip/17.05-GCCcore-13.3.0
 
 # Set root path
 #ROOT="$TMPDIR/datasets" # does not work with validate.job due to mkdir dynamics
 ROOT="/scratch-shared/scur0555/datasets" # working
 mkdir -p "$ROOT/cnn_detection/train" "$ROOT/cnn_detection/val" "$ROOT/cnn_detection/test"
+
 
 # Dataset 1: CNN-generated images are surprisingly easy to spot...for now
 
@@ -37,6 +39,7 @@ wget https://huggingface.co/datasets/sywang/CNNDetection/resolve/main/CNN_synth_
 unzip CNN_synth_testset.zip
 rm CNN_synth_testset.zip
 
+
 # Dataset 2: Diffusion LDM/Glide
 cd "$ROOT" || exit 1
 pip install gdown --quiet
@@ -44,6 +47,7 @@ FILEID=1FXlGIRh_Ud3cScMgSVDbEWmPDmjcrm1t
 gdown https://drive.google.com/uc?id=$FILEID
 unzip diffusion_datasets.zip
 rm diffusion_datasets.zip
+
 
 # Datset 3: DF40 (test set)
 cd "$ROOT" || exit 1
@@ -56,12 +60,42 @@ ACCESS_TOKEN="<access-token>"
 # step 1: save the files inside the folder to a .json object
 curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
   "https://www.googleapis.com/drive/v3/files?q='$FOLDERID'+in+parents+and+trashed=false&fields=files(id,name,mimeType)" \
-  -o df40_files.json
+  -o df40_test_files.json
 
 # step 2: download each .zip file iteratively by reading the saved .json mappings
 # single file: curl -H "Authorization: Bearer ${ACCESS_TOKEN}" https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media -o ${FILENAME}.zip
 
-jq -r '.files[] | select(.mimeType != "application/vnd.google-apps.folder" and (.name | endswith(".zip"))) | [.id, .name] | @tsv' df40_files.json | \
+jq -r '.files[] | select(.mimeType != "application/vnd.google-apps.folder" and (.name | endswith(".zip"))) | [.id, .name] | @tsv' df40_test_files.json | \
+while IFS=$'\t' read -r FILEID FILENAME; do
+  echo "Downloading $FILENAME $FILEID"
+  curl -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+       -L "https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media" \
+       -o "${FILENAME}"
+done
+
+# step 3: unzipping
+for file in *.zip; do
+  echo "Unzipping $file"
+  unzip -o "$file"
+done
+# e4e.zip -> 7z x -y file.zip
+
+
+# Datset 3: DF40 (train set)
+cd "$ROOT/df40/train" || exit 1
+FOLDERID=1U8meBbqVvmUkc5GD0jxct6xe6Gwk9wKD
+# follow this: https://stackoverflow.com/questions/65312867/how-to-download-large-file-from-google-drive-from-terminal-gdown-doesnt-work
+ACCESS_TOKEN="<access-token>"
+
+# step 1: save the files inside the folder to a .json object
+curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "https://www.googleapis.com/drive/v3/files?q='$FOLDERID'+in+parents+and+trashed=false&fields=files(id,name,mimeType)" \
+  -o df40_train_files.json
+
+# step 2: download each .zip file iteratively by reading the saved .json mappings
+# single file: curl -H "Authorization: Bearer ${ACCESS_TOKEN}" https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media -o ${FILENAME}.zip
+
+jq -r '.files[] | select(.mimeType != "application/vnd.google-apps.folder" and (.name | endswith(".zip"))) | [.id, .name] | @tsv' df40_train_files.json | \
 while IFS=$'\t' read -r FILEID FILENAME; do
   echo "Downloading $FILENAME $FILEID"
   curl -H "Authorization: Bearer ${ACCESS_TOKEN}" \
@@ -92,13 +126,15 @@ while IFS=$'\t' read -r FILEID FILENAME; do
        --progress-bar -o "${FILENAME}"
 done
 
+
 # Datset 4: FaceForensics++
 cd "$ROOT" || exit 1
 mkdir -p "$ROOT/face_forensics"
 cd "$ROOT/face_forensics" || exit 1
 FILEID=1dHJdS0NZ6wpewbGA5B0PdIBS9gz28pdb
 gdown https://drive.google.com/uc?id=$FILEID
-unzip FaceForensics++_real_data_for_DF40.zip 
+unzip FaceForensics++_real_data_for_DF40.zip
+
 
 # Datset 5: Celeb-DF
 cd "$ROOT" || exit 1

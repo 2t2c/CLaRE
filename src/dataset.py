@@ -29,6 +29,13 @@ except ImportError:
     # Fallback for direct script execution
     from utils import *
 import albumentations as A
+import logging
+from rich.table import Table
+from rich.console import Console
+from collections import Counter
+
+# fetch logger
+logger = logging.getLogger("fomo_logger")
 
 
 # global variables
@@ -52,7 +59,7 @@ class DF40(Dataset):
     Abstract base class for all deepfake datasets.
     """
 
-    def __init__(self, config=None, jpeg_quality=None, 
+    def __init__(self, config=None, jpeg_quality=None,
                  gaussian_sigma=None, mode='train'):
         """Initializes the dataset object.
 
@@ -708,6 +715,142 @@ class UFD(Dataset):
         return img, label
 
 
+class LARE(Dataset):
+    def __init__(self, data_root, train_file,
+                 data_size=512, val_ratio=None, split_anchor=True,
+                 args=None,
+                 map_file='/home/petterluo/project/FakeImageDetection/outputs/all_map_anns_final.txt',
+                 ):
+        self.data_root = data_root
+        self.data_size = data_size
+        self.train_list = []
+        self.anchor_list = []
+        self.isAnchor = False
+        self.isVal = False
+        self.split_anchor = split_anchor
+        self.albu_pre_train = A.Compose([
+            A.PadIfNeeded(min_height=self.data_size, min_width=self.data_size, p=1.0),
+            A.RandomCrop(height=self.data_size, width=self.data_size, p=1.0),
+            A.OneOf([
+                A.ImageCompression(quality_lower=50, quality_upper=95, compression_type=0, p=1.0),
+                A.GaussianBlur(blur_limit=(3, 7), p=1.0),
+                A.GaussNoise(var_limit=(3.0, 10.0), p=1.0),
+                A.ToGray(p=1.0),
+            ], p=0.5),
+            A.RandomRotate90(p=0.33),
+            A.Flip(p=0.33),
+        ], p=1.0)
+        self.albu_pre_train_easy = A.Compose([
+            A.PadIfNeeded(min_height=self.data_size, min_width=self.data_size, p=1.0),
+            A.RandomCrop(height=self.data_size, width=self.data_size, p=1.0),
+        ], p=1.0)
+        self.albu_pre_val = A.Compose([
+            A.PadIfNeeded(min_height=self.data_size, min_width=self.data_size, p=1.0),
+            A.CenterCrop(height=self.data_size, width=self.data_size, p=1.0),
+        ], p=1.0)
+        self.imagenet_norm = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ])
+        self.args = args
+
+        train_file_buf = open(train_file)
+        line = train_file_buf.readline().strip()
+
+        while line:
+            image_path, image_label = line.rsplit(' ', 1)
+            label = int(image_label)
+            if self.split_anchor and random.random() < 0.1 and label == 0 and len(self.anchor_list) < 100:
+                self.anchor_list.append((image_path, label))
+            else:
+                self.train_list.append((image_path, label))
+                # print('add train')
+            line = train_file_buf.readline().strip()
+            # print(line)
+
+        if val_ratio is not None:
+            np.random.shuffle(self.train_list)
+            self.test_list = self.train_list[-int(len(self.train_list) * val_ratio):]
+            self.train_list = self.train_list[:-int(len(self.train_list) * val_ratio)]
+        else:
+            self.test_list = self.train_list
+        # print('len train:', len(self.train_list))
+        # print('len test:', len(self.test_list))
+        filename_to_loss = {}
+        with open(map_file) as f:
+            for line in f:
+                image_path, label = line.strip().split('\t')
+                filename = image_path.split('/')[-1].split('.')[0]
+                filename_to_loss[filename] = image_path
+
+        ordered_map_paths = []
+        for ann in self.train_list:
+            image_path = ann[0]
+            filename = image_path.split('/')[-1].split('.')[0]
+            loss_path = filename_to_loss[filename]
+            ordered_map_paths.append(loss_path)
+        self.ordered_map_paths = ordered_map_paths
+
+    def transform(self, x):
+        if self.isVal:
+            x = self.albu_pre_val(image=x)['image']
+        else:
+            if self.args.no_strong_aug:
+                x = self.albu_pre_train_easy(image=x)['image']
+            else:
+                x = self.albu_pre_train(image=x)['image']
+        x = self.imagenet_norm(x)  # .unsqueeze(0)
+        return x
+
+    def __len__(self):
+        if self.isAnchor:
+            return len(self.anchor_list)
+        elif self.isVal:
+            return len(self.test_list)
+        else:
+            return len(self.train_list)
+
+    def __getitem__(self, index):
+        if self.isAnchor:
+            return self.getitem(index, self.anchor_list)
+        elif self.isVal:
+            return self.getitem(index, self.test_list)
+        else:
+            return self.getitem(index, self.train_list)
+
+    def getitem(self, index, data_list):
+        image_path, onehot_label = data_list[index]
+        map_path = self.ordered_map_paths[index]
+
+        loss_map = torch.load(map_path)
+
+        if not os.path.exists(image_path):
+            image_path = os.path.join(self.data_root, image_path)
+        image = cv2.imread(image_path)
+
+        if image is None:
+            logger.info('Error Image: %s' % image_path)
+            image = np.zeros([512, 512, 3], dtype=np.uint8)
+        image = image[..., ::-1]
+
+        crop = self.transform(image)
+        onehot_label = torch.LongTensor([onehot_label])
+        return crop, onehot_label, loss_map
+
+    def set_val_True(self):
+        self.isVal = True
+
+    def set_val_False(self):
+        self.isVal = False
+
+    def set_anchor_True(self):
+        self.isAnchor = True
+
+    def set_anchor_False(self):
+        self.isAnchor = False
+
+
 def describe_dataloader(dataloader):
     """
     Method to print dataset statistics from a PyTorch DataLoader:
@@ -716,45 +859,54 @@ def describe_dataloader(dataloader):
     - Class distribution (if available)
     - Sample data shape and dtype
     """
+    console = Console()
     dataset = dataloader.dataset
     total_samples = len(dataset)
     total_batches = len(dataloader)
 
-    print(f"Total samples: {total_samples}")
-    print(
-        f"Total batches (batch_size={dataloader.batch_size}): {total_batches}")
+    table = Table(title="DataLoader Summary")
 
-    # Try to detect classes
+    table.add_column("Property", style="bold cyan")
+    table.add_column("Value", style="magenta")
+    table.add_row("Total samples", str(total_samples))
+    table.add_row(f"Total batches (batch_size={dataloader.batch_size})", str(total_batches))
+    table.add_row(f"Num Workers", str(dataloader.num_workers))
+
+    # class info
     class_info_found = False
     if hasattr(dataset, 'classes'):
-        print(f"Classes: {dataset.classes}")
+        table.add_row("Classes", str(dataset.classes))
         class_info_found = True
     if hasattr(dataset, 'class_to_idx'):
-        print(f"Class to index mapping: {dataset.class_to_idx}")
+        table.add_row("Class to index mapping", str(dataset.class_to_idx))
         class_info_found = True
     if hasattr(dataset, 'targets'):
-        from collections import Counter
         targets = dataset.targets
         if isinstance(targets, list):
             targets = torch.tensor(targets)
         label_counts = Counter(targets.tolist())
-        print(f"Label counts: {dict(label_counts)}")
+        table.add_row("Label counts", str(dict(label_counts)))
         class_info_found = True
-
     if not class_info_found:
-        print("No class/label info found in dataset attributes.")
+        table.add_row("Class/Label info", "No class/label info found in dataset attributes.")
 
-    # Try to inspect first batch for shape/type
+    # sample data shape and dtype
     try:
         first_batch = next(iter(dataloader))
         if isinstance(first_batch, (list, tuple)):
-            print(f"Input sample shape: {first_batch[0].shape}")
-            print(f"Label sample: {first_batch[1]}")
+            # Show shape of first input and sample label summary
+            shape_info = str(first_batch[0].shape)
+            label_info = str(first_batch[1])
+            table.add_row("Input sample shape", shape_info)
+            table.add_row("Label sample", label_info)
+        elif isinstance(first_batch, dict):
+            table.add_row("Sample keys", str(list(first_batch.keys())))
         else:
-            print(f"Sample: {first_batch.keys()}")
+            table.add_row("Sample", str(type(first_batch)))
     except Exception as e:
-        print(f"Could not inspect a sample batch: {e}")
+        table.add_row("Sample inspection error", str(e))
 
+    console.print(table)
 
 # test the dataset pipeline
 if __name__ == "__main__":

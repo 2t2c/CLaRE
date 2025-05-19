@@ -2,17 +2,47 @@
 This module contains utility functions for data processing and whole.
 """
 
+import os
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter
 from PIL import Image
 from io import BytesIO
 import random
-
+import logging
 import cv2
 from albumentations import DualTransform, ImageOnlyTransform
 from albumentations.augmentations.crops.functional import crop
 from rich.table import Table
 from rich.console import Console
+import torch
+# fetch logger
+logger = logging.getLogger("fomo_logger")
+
+def set_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+
+    try:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    except ImportError:
+        pass
+
+
+def get_device(type):
+    if type == "cuda":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    elif type == "mps":
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    else:
+        device =  torch.device("cpu")
+    logger.info(f"Using device: {device}")
+
+    return device
 
 def isotropically_resize_image(img, size, interpolation_down=cv2.INTER_AREA, interpolation_up=cv2.INTER_CUBIC):
     h, w = img.shape[:2]
@@ -185,6 +215,25 @@ def display_args(args, title="Arguments"):
 
     for key, value in args.items():
         table.add_row(str(key), str(value))
+
+    console = Console()
+    console.print(table)
+
+def display_metrics(metrics: dict, title="Validation Metrics"):
+    """
+    Nicely print metric dictionary using rich.
+
+    :param:
+        metrics: Dictionary of metrics (e.g., {"AUC": 0.95, "ACC": 0.88, ...})
+    :param:
+        title: Optional table title
+    """
+    table = Table(title=title)
+    table.add_column("Metric", style="cyan", no_wrap=True)
+    table.add_column("Value", style="magenta")
+
+    for key, value in metrics.items():
+        table.add_row(str(key), f"{value:.4f}" if isinstance(value, (int, float)) else str(value))
 
     console = Console()
     console.print(table)
