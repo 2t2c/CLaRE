@@ -6,10 +6,11 @@ import os
 import sys
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 sys.path.append(os.path.abspath(os.path.join("..")))
+from core import get_model
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import datetime
 import time
+import yaml
 import numpy as np
 import torch
 import torch.utils.data.distributed
@@ -22,9 +23,8 @@ from torch.utils.data import DataLoader, Dataset
 from rich import print as rprint
 import wandb
 from loss import LabelSmoothingLoss
-from utils import set_seed, get_device, display_metrics
+from utils import set_seed, get_device, display_metrics, display_model_summary
 from dataset import describe_dataloader, LARE
-from core import get_model
 import logging
 
 # fetch logger
@@ -97,7 +97,8 @@ def train_one_epoch(data_loader, model, optimizer, epoch,
                 "train/lr": lr,
                 "train/step": step,
             }
-            wandb.log(metrics, step=step)
+            if args.logging:
+                wandb.log(metrics, step=step)
             rprint("Time Elapsed:", elapsed)
             display_metrics(metrics=metrics)
             loss_meter.reset()
@@ -133,7 +134,8 @@ def train_one_epoch(data_loader, model, optimizer, epoch,
                 "val/real_accuracy": val_r_acc,
                 "val/fake_accuracy": val_f_acc,
             }
-            wandb.log(val_metrics, step=step)
+            if args.logging:
+                wandb.log(val_metrics, step=step)
             elapsed = time.time() - start_time
             rprint("Time Elapsed:", elapsed)
             display_metrics(metrics=val_metrics)
@@ -226,25 +228,26 @@ def search_best_acc(gt_labels, pred_probs):
 
 def train(args):
     # setup wandb
-    wandb.init(
-        project=args.project,
-        entity="FoMo",
-        name=args + str(datetime.now(ZoneInfo("Europe/Amsterdam"))),
-        config={
-            "architecture": args.model,
-            "clip_type": args.clip_type,
-            "batch_size": args.batch_size,
-            "out_dir": args.out_dir,
-            "seed": args.seed,
-            "mode": args.mode,
-            "device": args.device,
-            "eval_every": args.eval_every,
-            "log_every": args.log_every,
-            "epochs": args.epochs,
-            # "dataset_type": dataset_type,
-            # "dataset_name": dataset_name,
-        },
-        settings=wandb.Settings(_service_wait=300, init_timeout=120))
+    if args.logging:
+        wandb.init(
+            project=args.project,
+            entity="FoMo",
+            name=args.run_name+ "_" + args.uid,
+            config={
+                "architecture": args.model,
+                "clip_type": args.clip_type,
+                "batch_size": args.batch_size,
+                "out_dir": args.out_dir,
+                "seed": args.seed,
+                "mode": args.mode,
+                "device": args.device,
+                "eval_every": args.eval_every,
+                "log_every": args.log_every,
+                "epochs": args.epochs,
+                # "dataset_type": dataset_type,
+                # "dataset_name": dataset_name,
+            },
+            settings=wandb.Settings(_service_wait=300, init_timeout=120))
 
     global test_best
     global test_best_close
@@ -253,25 +256,30 @@ def train(args):
     model = get_model(name=args.model, type=args.clip_type, roi_pooling=args.roi_pooling)
     device = get_device(args.device)
     model.to(device)
+    display_model_summary(model, input_shape=(1, 3, 224, 224), device=device)
 
+    # load the config file
+    with open("../configs/df40/" + args.config, 'r') as f:
+        config = yaml.safe_load(f)
     # load training data
-    train_dataset = LARE(args.data_root, args.train_file, data_size=args.data_size, val_ratio=None,
-                         split_anchor=False, args=args)
+    train_dataset =  LARE(config=config, 
+                       mode=args.mode, 
+                       jpeg_quality=args.jpeg_quality)
     train_data_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=True, sampler=None)
-    train_data_loader.dataset.set_val_False()
+    # train_data_loader.dataset.set_val_False()
     describe_dataloader(train_data_loader)
 
     # load validation data
-    val_dataset = LARE(args.data_root, args.val_file, data_size=args.data_size, split_anchor=False)
-    val_data_loader = DataLoader(
-        val_dataset, args.batch_size,
-        shuffle=False,
-        num_workers=args.workers, pin_memory=True, sampler=None)
-    describe_dataloader(val_data_loader)
-    val_data_loader.dataset.set_val_True()
-    val_data_loader.dataset.set_anchor_False()
+    # val_dataset = LARE(args.data_root, args.val_file, data_size=args.data_size, split_anchor=False)
+    # val_data_loader = DataLoader(
+    #     val_dataset, args.batch_size,
+    #     shuffle=False,
+    #     num_workers=args.workers, pin_memory=True, sampler=None)
+    # describe_dataloader(val_data_loader)
+    # val_data_loader.dataset.set_val_True()
+    # val_data_loader.dataset.set_anchor_False()
 
     # setting loss criterion
     if not args.label_smooth:
@@ -281,19 +289,17 @@ def train(args):
     # args.criterion_ce = torch.nn.CrossEntropyLoss().cuda()
     # args.torchKMeans = torchKMeans(verbose=False, n_clusters=2, distance=CosineSimilarity)
 
-    params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info('Params: %.2f' % (params / (1024 ** 2)))
 
-    if args.resume != '':
-        if args.gpu is None:
-            checkpoint = torch.load(args.resume)
-        elif torch.cuda.is_available():
-            # map model to be loaded to specified single gpu.
-            loc = 'cuda:{}'.format(args.gpu)
-            checkpoint = torch.load(args.resume, map_location=loc)
-        model.load_state_dict(checkpoint, strict=False)
-    elif args.isTrain == 0:
-        raise ValueError("Eval mode but no checkpoint path")
+    # if args.resume != '':
+    #     if args.gpu is None:
+    #         checkpoint = torch.load(args.resume)
+    #     elif torch.cuda.is_available():
+    #         # map model to be loaded to specified single gpu.
+    #         loc = 'cuda:{}'.format(args.gpu)
+    #         checkpoint = torch.load(args.resume, map_location=loc)
+    #     model.load_state_dict(checkpoint, strict=False)
+    # elif args.isTrain == 0:
+    #     raise ValueError("Eval mode but no checkpoint path")
 
     # setting optimizer
     parameters = [p for p in model.parameters() if p.requires_grad]
@@ -306,6 +312,7 @@ def train(args):
     auc_meter = StatsMeter()
 
     # starting the training
+    rprint("Training Started!")
     step = 0
     for epoch in range(args.epochs):
         # set model to training mode
@@ -317,5 +324,6 @@ def train(args):
         # scheduler step
         lr_schedule.step(auc_meter.avg)
 
-    # exit session
-    wandb.finish()
+    if args.logging:
+        # exit session
+        wandb.finish()

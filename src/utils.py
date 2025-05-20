@@ -15,6 +15,8 @@ from albumentations.augmentations.crops.functional import crop
 from rich.table import Table
 from rich.console import Console
 import torch
+from torchinfo import summary
+
 # fetch logger
 logger = logging.getLogger("fomo_logger")
 
@@ -141,6 +143,10 @@ class RandomSizedCropNonEmptyMaskIfExists(DualTransform):
 
 
 def png2jpg(img, quality):
+    # check if the img in right
+    if isinstance(img, np.ndarray):
+        img = Image.fromarray(img)
+
     out = BytesIO()
     # ranging from 0-95, 75 is default
     img.save(out, format='jpeg', quality=quality)
@@ -148,7 +154,8 @@ def png2jpg(img, quality):
     # load from memory before ByteIO closes
     img = np.array(img)
     out.close()
-    return Image.fromarray(img)
+
+    return img
 
 
 def gaussian_blur(img, sigma):
@@ -234,6 +241,43 @@ def display_metrics(metrics: dict, title="Validation Metrics"):
 
     for key, value in metrics.items():
         table.add_row(str(key), f"{value:.4f}" if isinstance(value, (int, float)) else str(value))
+
+    console = Console()
+    console.print(table)
+
+
+def display_model_summary(model, input_shape=None, title="Model Summary", device="cpu"):
+    """
+    Display model parameter summary using rich. Supports multiple inputs.
+
+    :param:
+        model: PyTorch model
+    :param:
+        input_shape: A single shape tuple or list/tuple e.g., (1, 3, 224, 224)
+    :param:
+        title: Optional table title
+    :param:
+        device: Device for dummy inputs
+    """
+    model = model.to(device)
+    table = Table(title=title)
+    table.add_column("Property", style="cyan", no_wrap=True)
+    table.add_column("Value", style="magenta")
+
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    table.add_row("Model", model.__class__.__name__)
+    table.add_row("Total Parameters", f"{total_params:,}")
+    table.add_row("Trainable Parameters", f"{trainable_params:,}")
+    table.add_row("Trainable (Million)", f"{trainable_params / (1024 ** 2):.2f} Million")
+    arch = str(summary(model.clip_model, depth=1, verbose=0))
+    table.add_row("Summary", arch)
+
+    if input_shape is not None:
+        table.add_row(f"Input Shape", str(input_shape))
+        visual_arch = str(summary(model.clip_model.visual, input_size=input_shape, depth=1, verbose=0))
+        table.add_row("CLIP.Visual", visual_arch)
 
     console = Console()
     console.print(table)

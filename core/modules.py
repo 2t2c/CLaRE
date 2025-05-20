@@ -11,7 +11,8 @@ def clip_encode_image(self, image):
     """
     Encodes the image using the visual CLIP model.
     """
-    return self.visual(self.visual, image.type(self.dtype))
+    # return self.visual(self.visual, image.type(self.dtype))
+    return self.visual(image.type(self.dtype))
 
 
 def clip_forward(self, x):

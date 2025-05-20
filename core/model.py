@@ -4,7 +4,7 @@ import clip
 import torch
 from torch import nn
 from torch.nn import functional as F
-
+import types
 from .modules import (clip_forward, clip_encode_image, ChannelAlignLayer,
                       MultiHeadMapAttention, ROIPooler)
 
@@ -47,8 +47,11 @@ class CLIPClassifierWMap(nn.Module):
             self.clip_model, self.preprocess = clip.load(name, device="cpu")
         self.text_input = clip.tokenize(["Real Photo", "Fake Photo"])
         # overriding the methods of clip
-        self.clip_model.visual.forward = clip_forward
-        self.clip_model.encode_image = clip_encode_image
+        # self.clip_model.visual.forward = clip_forward
+        # self.clip_model.encode_image = clip_encode_image
+        # bind custom forward properly
+        self.clip_model.visual.forward = types.MethodType(clip_forward, self.clip_model.visual)
+        self.clip_model.encode_image = types.MethodType(clip_encode_image, self.clip_model)
         # conv. + attention + alignment
         self.conv = nn.Conv2d(4, 8, kernel_size=(1, 1))  # for 8 heads
         self.conv_align = nn.Conv2d(4, 1024, kernel_size=(1, 1))
@@ -65,7 +68,9 @@ class CLIPClassifierWMap(nn.Module):
 
     def forward(self, image, loss_map, rois=None):
         # image - (B,C,H,W) | loss_map - (B,4,32,32)
-        image_feats, block3_feats = self.clip_model.encode_image(self.clip_model, image)
+        # image_feats, block3_feats = self.clip_model.encode_image(self.clip_model, image)
+        image_feats, block3_feats = self.clip_model.encode_image(image)
+
         # block3 - (B,1024,14,14)
         aligned_loss_map = F.adaptive_avg_pool2d(loss_map, (14, 14))  # (B,4,14,14)
         pooled_loss_map = self.conv(aligned_loss_map)  # (B,8,14,14)
