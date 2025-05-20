@@ -5,11 +5,13 @@ Script to train the architecture pipeline.
 import os
 import sys
 os.environ["WANDB__SERVICE_WAIT"] = "300"
-sys.path.append(os.path.abspath(os.path.join("..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core import get_model
 from datetime import datetime
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 import time
+from tqdm import tqdm
 import yaml
 import numpy as np
 import torch
@@ -59,16 +61,21 @@ def get_lr(optimizer):
         return param_group['lr']
 
 
-def train_one_epoch(data_loader, model, optimizer, epoch,
+def train_one_epoch(model, train_data_loader, val_data_loader, 
+                    optimizer, epoch,
                     loss_meter, auc_meter, args, device,
                     step):
+    # set model to training mode
+    model.train()
     # set variables
     loss_meter.reset()
     auc_meter.reset()
     best_val, best_step = 0, 0
     start_time = time.time()
+    pbar = tqdm(train_data_loader, desc=f"Epoch {epoch}", unit="batch")
 
-    for (images, labels, loss_maps) in data_loader:
+    for batch in pbar:
+        images, labels, loss_maps = batch
         images = images.to(device)
         labels = labels.to(device).flatten().squeeze()
         loss_maps = loss_maps.to(device)
@@ -99,7 +106,7 @@ def train_one_epoch(data_loader, model, optimizer, epoch,
             }
             if args.logging:
                 wandb.log(metrics, step=step)
-            rprint("Time Elapsed:", elapsed)
+            rprint("Time Elapsed ():", str(timedelta(seconds=elapsed)))
             display_metrics(metrics=metrics)
             loss_meter.reset()
 
@@ -107,9 +114,8 @@ def train_one_epoch(data_loader, model, optimizer, epoch,
         if step % args.eval_every == 0:
             # save directly after training to avoid errors and wasted training
             torch.save(model.state_dict(), os.path.join(args.out_dir, 'latest.pt'))
-            val_auc, val_acc, val_ap, val_raw_acc, val_r_acc, val_f_acc = validation_contrastive(model, args,
-                                                                                                 args.val_file,
-                                                                                                 device)
+            val_auc, val_acc, val_ap, val_raw_acc, val_r_acc, val_f_acc = validation_contrastive(model, val_data_loader,
+                                                                                                 step, device)
             if val_acc > best_val:
                 best_val = val_acc
                 best_step = step
@@ -137,25 +143,29 @@ def train_one_epoch(data_loader, model, optimizer, epoch,
             if args.logging:
                 wandb.log(val_metrics, step=step)
             elapsed = time.time() - start_time
-            rprint("Time Elapsed:", elapsed)
+            rprint("Time Elapsed:", str(timedelta(seconds=elapsed)))
             display_metrics(metrics=val_metrics)
 
-    return step, None
+            model.train()  # switch back to training mode after validation
+
+    return step
 
 
-def validation_contrastive(model, data_loader, test_file, device):
+def validation_contrastive(model, data_loader, step, device):
     """
     Validation function for the model.
     """
-    logger.info('Starting Evaluation')
+    logger.info('Evaluation Started!')
     model.eval()
+
     gt_labels_list, pred_labels_list, prob_labels_list = [], [], []
-    logger.info(f'Val dataset size: {len(data_loader.dataset)}')
     gt_labels_list = []
     pred_scores = []
-    # i = 0
+    pbar = tqdm(data_loader, desc=f"Step {step}", unit="batch")
+
     with torch.no_grad():
-        for iter, (images, labels, loss_maps) in enumerate(data_loader):
+        for batch in pbar:
+            images, labels, loss_maps = batch
             images = images.to(device)
             b, C, H, W = images.shape
             images = images.reshape(b, C, H, W)
@@ -171,10 +181,6 @@ def validation_contrastive(model, data_loader, test_file, device):
                 # continue
             gt_labels_list.append(labels)
             prob_labels_list.append(prob[:, 1])
-            if iter % 50 == 0 and iter > 0:
-                logger.info(
-                    'Eval: it %03d/%03d' % (
-                        iter, len(data_loader)))
 
     # gather ground truth labels and predicted labels
     gt_labels = torch.cat(gt_labels_list, dim=0)
@@ -184,12 +190,12 @@ def validation_contrastive(model, data_loader, test_file, device):
 
     fpr, tpr, thres = roc_curve(gt_labels_list, prob_labels_list)
     thresh = thres[len(thres) // 2]
-    logger.info(f'thresh old: {thresh}')
+    logger.info(f'Thresh Old: {thresh}')
     precision, recall, thresholds = precision_recall_curve(gt_labels_list, prob_labels_list)
     f_score = precision * recall / (precision + recall)
     thresh = thresholds[np.argmax(f_score)]
     # thresh = 0.5
-    logger.info(f'thresh new: {thresh}')
+    logger.info(f'Thresh New: {thresh}')
 
     pred_labels_list = np.array(prob_labels_list)
     pred_labels_list[pred_labels_list > thresh] = 1
@@ -227,12 +233,16 @@ def search_best_acc(gt_labels, pred_probs):
 
 
 def train(args):
+    # load the config file
+    with open("./configs/" + args.config, 'r') as f:
+        config = yaml.safe_load(f)
+
     # setup wandb
     if args.logging:
         wandb.init(
             project=args.project,
             entity="FoMo",
-            name=args.run_name+ "_" + args.uid,
+            name=args.run_name+ "/" + args.uid,
             config={
                 "architecture": args.model,
                 "clip_type": args.clip_type,
@@ -244,8 +254,8 @@ def train(args):
                 "eval_every": args.eval_every,
                 "log_every": args.log_every,
                 "epochs": args.epochs,
-                # "dataset_type": dataset_type,
-                # "dataset_name": dataset_name,
+                "train_dataset": config["train_dataset"],
+                "test_dataset": config["test_dataset"],
             },
             settings=wandb.Settings(_service_wait=300, init_timeout=120))
 
@@ -258,28 +268,25 @@ def train(args):
     model.to(device)
     display_model_summary(model, input_shape=(1, 3, 224, 224), device=device)
 
-    # load the config file
-    with open("../configs/df40/" + args.config, 'r') as f:
-        config = yaml.safe_load(f)
     # load training data
-    train_dataset =  LARE(config=config, 
+    train_dataset = LARE(config=config, 
                        mode=args.mode, 
-                       jpeg_quality=args.jpeg_quality)
+                       jpeg_quality=args.jpeg_quality,
+                       debug=args.debug)
     train_data_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=True, sampler=None)
-    # train_data_loader.dataset.set_val_False()
     describe_dataloader(train_data_loader)
 
     # load validation data
-    # val_dataset = LARE(args.data_root, args.val_file, data_size=args.data_size, split_anchor=False)
-    # val_data_loader = DataLoader(
-    #     val_dataset, args.batch_size,
-    #     shuffle=False,
-    #     num_workers=args.workers, pin_memory=True, sampler=None)
-    # describe_dataloader(val_data_loader)
-    # val_data_loader.dataset.set_val_True()
-    # val_data_loader.dataset.set_anchor_False()
+    val_dataset = LARE(config=config, 
+                       mode="test", 
+                       jpeg_quality=args.jpeg_quality,
+                       debug=args.debug)
+    val_data_loader = DataLoader(
+        val_dataset, args.batch_size, shuffle=False,
+        num_workers=args.workers, pin_memory=True, sampler=None)
+    describe_dataloader(val_data_loader)
 
     # setting loss criterion
     if not args.label_smooth:
@@ -312,13 +319,12 @@ def train(args):
     auc_meter = StatsMeter()
 
     # starting the training
-    rprint("Training Started!")
+    logger.info(f"Training Started! - Debugging: {args.debug}")
     step = 0
     for epoch in range(args.epochs):
-        # set model to training mode
-        model.train()
         # train one epoch
-        step = train_one_epoch(train_data_loader, model, optimizer, epoch,
+        step = train_one_epoch(model, train_data_loader, val_data_loader, 
+                               optimizer, epoch,
                                loss_meter, auc_meter, args, device,
                                step)
         # scheduler step

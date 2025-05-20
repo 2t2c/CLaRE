@@ -165,7 +165,7 @@ class DF40(Dataset):
     """
 
     def __init__(self, config=None, jpeg_quality=None,
-                 gaussian_sigma=None, mode='train'):
+                 gaussian_sigma=None, debug=False, mode='train'):
         """Initializes the dataset object.
 
         Args:
@@ -178,6 +178,7 @@ class DF40(Dataset):
 
         # Set the configuration and mode
         self.config = config
+        self.debug = debug
         self.mode = mode
         self.compression = config['compression']
         self.frame_num = config['frame_num'][mode]
@@ -193,7 +194,7 @@ class DF40(Dataset):
         self.gaussian_sigma = gaussian_sigma
 
         # Set the dataset dictionary based on the mode
-        if mode == 'train':
+        if self.mode == 'train':
             dataset_list = config['train_dataset']
             # Training data should be collected together for training
             image_list, label_list = [], []
@@ -202,7 +203,7 @@ class DF40(Dataset):
                     one_data)
                 image_list.extend(tmp_image)
                 label_list.extend(tmp_label)
-        elif mode == 'test':
+        elif self.mode == 'test':
             one_data = config['test_dataset']
             # Test dataset should be evaluated separately. So collect only one dataset each time
             image_list, label_list, name_list = self.collect_img_and_label_for_one_dataset(
@@ -212,8 +213,13 @@ class DF40(Dataset):
                 'Only train and test modes are supported.')
 
         assert len(image_list) != 0 and len(
-            label_list) != 0, f"Collect nothing for {mode} mode!"
+            label_list) != 0, f"Collect nothing for {self.mode} mode!"
         self.image_list, self.label_list = image_list, label_list
+
+        # for debugging
+        if self.debug: 
+            self.image_list = self.image_list[: min(10_000, len(self.image_list))]
+            self.label_list = self.label_list[: min(10_000, len(self.image_list))]
 
         # Create a dictionary containing the image and label lists
         self.data_dict = {
@@ -255,8 +261,8 @@ class DF40(Dataset):
                 A.FancyPCA(),
                 A.HueSaturationValue()
             ], p=0.5),
-            A.ImageCompression(quality_lower=self.config['data_aug']['quality_lower'],
-                               quality_upper=self.config['data_aug']['quality_upper'], p=0.5)
+            A.ImageCompression(quality_range=(self.config['data_aug']['quality_lower'],
+                                              self.config['data_aug']['quality_upper']), p=0.5)
         ],
             keypoint_params=A.KeypointParams(
                 format='xy') if self.config['with_landmark'] else None
@@ -740,9 +746,11 @@ class DF40(Dataset):
 class LARE(DF40):
     def __init__(self, config, mode,
                  img_size=224, val_ratio=None, split_anchor=True,
-                 jpeg_quality=None, gaussian_sigma=None):
+                 jpeg_quality=None, gaussian_sigma=None, debug=False):
         # initialize DF40 first (inherits data loading, image_list, label_list, etc.)
-        super().__init__(config, jpeg_quality=jpeg_quality, gaussian_sigma=gaussian_sigma, mode=mode)
+        super().__init__(config, jpeg_quality=jpeg_quality, 
+                        gaussian_sigma=gaussian_sigma, debug=debug,
+                        mode=mode)
         self.img_size = img_size
         self.train_list = []
         self.anchor_list = []
@@ -754,7 +762,7 @@ class LARE(DF40):
             A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
             A.OneOf([
                 A.GaussianBlur(blur_limit=(3, 7), p=1.0),
-                A.GaussNoise(var_limit=(3.0, 10.0), p=1.0),
+                A.GaussNoise(p=1.0),
             ], p=0.5),
             A.RandomRotate90(p=0.33),
             # A.Flip(p=0.33),
@@ -1020,7 +1028,7 @@ if __name__ == "__main__":
         )
     elif args.dataset == "df40":
         # load the config file
-        with open("./configs/df40/" + args.df40_config, 'r') as f:
+        with open("./configs/" + args.df40_config, 'r') as f:
             config = yaml.safe_load(f)
         if args.df40_name is not None:
             config[f'{args.df40_mode}_dataset'] = args.df40_name
@@ -1034,7 +1042,7 @@ if __name__ == "__main__":
         )
     elif args.dataset == "lare":
         # load the config file
-        with open("./configs/df40/" + args.df40_config, 'r') as f:
+        with open("./configs/" + args.df40_config, 'r') as f:
             config = yaml.safe_load(f)
         if args.df40_name is not None:
             config[f'{args.df40_mode}_dataset'] = args.df40_name

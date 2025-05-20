@@ -240,7 +240,7 @@ def display_metrics(metrics: dict, title="Validation Metrics"):
     table.add_column("Value", style="magenta")
 
     for key, value in metrics.items():
-        table.add_row(str(key), f"{value:.4f}" if isinstance(value, (int, float)) else str(value))
+        table.add_row(str(key), f"{value:.6f}" if isinstance(value, (int, float)) else str(value))
 
     console = Console()
     console.print(table)

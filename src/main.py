@@ -8,6 +8,7 @@ import argparse
 import time
 from utils import set_seed, display_args
 import logging
+from rich.logging import RichHandler
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 sys.path.append(os.path.abspath(os.path.join("..")))
@@ -21,10 +22,8 @@ from train import train
 logger = logging.getLogger("fomo_logger")
 logger.setLevel(logging.INFO)
 
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
+if not logger.hasHandlers():
+    handler = RichHandler()
     logger.addHandler(handler)
     logger.propagate = False
 
@@ -35,9 +34,14 @@ def main(args):
     """
     mode = args.mode
     if mode == "train":
+        # create directory if not exists
         uid = str(int(time.time()))
+        out_dir = os.path.join(os.path.expanduser("~"), args.out_dir, args.run_name, uid)
+        os.makedirs(out_dir, exist_ok=True)
         args.uid = uid
-        args.out_dir = os.path.join(args.out_dir, args.run_name, uid)
+        args.out_dir = out_dir
+        # pretty print args
+        display_args(args)
         # start training
         train(args)
     elif mode == "test":
@@ -58,31 +62,33 @@ if __name__ == '__main__':
     parser.add_argument('--run_name', type=str,
                         default="debug", help='wandb run name')
     parser.add_argument('--log_every', type=int,
-                        default=500, help='logging step')
+                        default=100, help='logging step')
     parser.add_argument('--logging', type=bool,
-                        default=False, help='online logging')
+                        default=True, help='online logging')
 
     # training/testing config args
     parser.add_argument('--mode', type=str,
                         choices=['train', 'test', 'both'],
                         default="train")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--device", type=str, default="cpu",
+    parser.add_argument("--device", type=str, default="cuda",
                         choices=["cpu", "cuda", "mps"],
                         help="Device to run the model on: cpu | cuda | mps")
     parser.add_argument('--eval_every', type=int,
-                        default=1000, help='Evaluation step')
+                        default=500, help='Evaluation step')
 
     # dataset args
     parser.add_argument("--df40_name", type=str, default=None,
                         help="DF40 dataset name")
     parser.add_argument('--config', type=str,
-                        default="train_config.yaml",
+                        default="config.yaml",
                         help="DF40 mode config")
     parser.add_argument('--jpeg_quality', type=int, default=95,
                         help="100, 90, 80, ... 30. Used to test robustness of our model. Not apply if None")
     parser.add_argument('--gaussian_sigma', type=int, default=None,
                         help="0,1,2,3,4.     Used to test robustness of our model. Not apply if None")
+    parser.add_argument('--debug', type=bool,
+                        default=True, help='Debugging on few samples')
 
     # model configs
     parser.add_argument("--model", type=str, default='CLIP:RN50')
@@ -91,12 +97,11 @@ if __name__ == '__main__':
 
     # training hyperparameters
     parser.add_argument('--epochs', type=int, default=100, help='Total training epochs.')
-    parser.add_argument('--batch_size', type=int, default=2, help='The training batch size over all gpus.')
-    parser.add_argument("--out_dir", type=str, default='../logdir')
+    parser.add_argument('--batch_size', type=int, default=16, help='The training batch size over all gpus.')
+    parser.add_argument("--out_dir", type=str, default='fomo_logdir')
     parser.add_argument("--num_classes", type=int, default=2, help='The class number of training dataset')
     parser.add_argument('--val_ratio', type=float, default=0.005)
     parser.add_argument('--lr', type=float, default=1e-4, help='The initial learning rate.')
-    parser.add_argument("--weights", type=str, default='../out_dir', help="The folder to save models.")
     parser.add_argument('--data_size', type=int, default=256, help='The image size for training.')
     parser.add_argument("--resume", type=str, default='')
     parser.add_argument("--label_smooth", action='store_true', default=False)
@@ -104,8 +109,6 @@ if __name__ == '__main__':
     parser.add_argument('--workers', default=4, type=int, metavar='N',
                         help='number of data loading workers (default: 4)')
     args = parser.parse_args()
-    # pretty print args
-    display_args(args)
 
     if args.seed is not None:
         # set seed for deterministic results

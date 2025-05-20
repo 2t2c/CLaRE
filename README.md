@@ -24,8 +24,16 @@ This project explores multimodal approaches for deepfake detection by integratin
 
 We use the [DF40 Dataset](https://github.com/YZY-stack/DF40), which includes:
 
-* **Train**: ~50 GB, 31 subsets (real/fake)
-* **Test**: 8/40 subsets (real/fake)
+* **Train**: 31 subsets (~50 Gb)
+* **Test**: 40 subsets (~90 Gb)
+
+### Dataset Splits
+
+| **Split**  | **Sources**                                                                 |
+|------------|------------------------------------------------------------------------------|
+| Training (10)   | **Entire Face Synthesis (EFS)**: DiT, SiT, StyleGAN2, StyleGAN3, StyleGANXL, VQGAN, ddim, pixart, rddm, sd2.1 |
+| Testing (17)    | **EFS** + **Others** (heygen, MidJourney, whichfaceisreal, stargan, starganv2, styleclip, CollabDiff) |
+
 
 ## Methodology
 

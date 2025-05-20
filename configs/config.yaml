@@ -1,13 +1,13 @@
-# DF40 train config file
+# Training and Testing Config
 
 mode: train
 dataset_json_folder: '/scratch-shared/scur0555/datasets/df40/configs'
 
 # log dir 
-log_dir: ./temp
+log_dir: ~/fomo_logdir
 
 # model setting
-pretrained: ./training/pretrained/xception-b5690688.pth   # path to a pre-trained model, if using one
+pretrained: ~/fomo_logdir/model.pth   # path to a pre-trained model, if using one
 model_name: clip   # model name
 backbone_name: vit  # backbone name
 
@@ -21,6 +21,7 @@ backbone_config:
 # dataset
 all_dataset: [FaceForensics++, FF-F2F, FF-DF, FF-FS, FF-NT, FaceShifter, DeepFakeDetection, Celeb-DF-v1, Celeb-DF-v2, DFDCP, DFDC, DeeperForensics-1.0, UADFV]
 train_dataset: [FSAll_ff]
+test_dataset: heygen
 
 compression: c23  # compression-level for videos
 train_batchSize: 32   # training batch size
