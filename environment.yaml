@@ -22,7 +22,6 @@ dependencies:
       - scikit-learn==1.6.1
       - ftfy==6.3.1
       - open_clip_torch==2.32.0
-      - albumentations==2.0.6
       - diffusers==0.33.1
       - openai-clip==1.0.1
       - albumentations==2.0.7
