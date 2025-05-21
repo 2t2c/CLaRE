@@ -17,6 +17,7 @@ def build_data_loader(
         num_workers=cfg.DATALOADER.NUM_WORKERS,
         drop_last=is_train and len(dataset) >= batch_size,
         pin_memory=(torch.cuda.is_available() and cfg.USE_CUDA),
+        collate_fn=dataset.collate_fn,
     )
     assert len(data_loader) > 0
     return data_loader

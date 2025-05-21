@@ -289,7 +289,7 @@ class SimpleTrainer(TrainerBase):
         """
         dm = DataManager(self.cfg)
 
-        self.train_loader_x = dm.train_loader
+        self.train_loader_x = dm.train_loader_x
         self.train_loader_u = None
         self.val_loader = dm.val_loader  # optional, can be None
         self.test_loader = dm.test_loader
@@ -424,7 +424,7 @@ class SimpleTrainer(TrainerBase):
         return self.model(input)
 
     def parse_batch_test(self, batch):
-        input = batch["img"]
+        input = batch["image"]
         label = batch["label"]
 
         input = input.to(self.device)
@@ -482,12 +482,10 @@ class TrainerX(SimpleTrainer):
             end = time.time()
 
     def parse_batch_train(self, batch):
-        input = batch["img"]
+        input = batch["image"]
         label = batch["label"]
-        domain = batch["domain"]
 
         input = input.to(self.device)
         label = label.to(self.device)
-        domain = domain.to(self.device)
 
-        return input, label, domain
+        return input, label

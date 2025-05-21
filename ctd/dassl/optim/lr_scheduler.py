@@ -1,6 +1,7 @@
 """
 Modified from https://github.com/KaiyangZhou/deep-person-reid
 """
+
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -8,18 +9,12 @@ AVAI_SCHEDS = ["single_step", "multi_step", "cosine"]
 
 
 class _BaseWarmupScheduler(_LRScheduler):
-
     def __init__(
-        self,
-        optimizer,
-        successor,
-        warmup_epoch,
-        last_epoch=-1,
-        verbose=False
+        self, optimizer, successor, warmup_epoch, last_epoch=-1, verbose=False
     ):
         self.successor = successor
         self.warmup_epoch = warmup_epoch
-        super().__init__(optimizer, last_epoch, verbose)
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self):
         raise NotImplementedError
@@ -33,20 +28,11 @@ class _BaseWarmupScheduler(_LRScheduler):
 
 
 class ConstantWarmupScheduler(_BaseWarmupScheduler):
-
     def __init__(
-        self,
-        optimizer,
-        successor,
-        warmup_epoch,
-        cons_lr,
-        last_epoch=-1,
-        verbose=False
+        self, optimizer, successor, warmup_epoch, cons_lr, last_epoch=-1, verbose=False
     ):
         self.cons_lr = cons_lr
-        super().__init__(
-            optimizer, successor, warmup_epoch, last_epoch, verbose
-        )
+        super().__init__(optimizer, successor, warmup_epoch, last_epoch, verbose)
 
     def get_lr(self):
         if self.last_epoch >= self.warmup_epoch:
@@ -55,29 +41,18 @@ class ConstantWarmupScheduler(_BaseWarmupScheduler):
 
 
 class LinearWarmupScheduler(_BaseWarmupScheduler):
-
     def __init__(
-        self,
-        optimizer,
-        successor,
-        warmup_epoch,
-        min_lr,
-        last_epoch=-1,
-        verbose=False
+        self, optimizer, successor, warmup_epoch, min_lr, last_epoch=-1, verbose=False
     ):
         self.min_lr = min_lr
-        super().__init__(
-            optimizer, successor, warmup_epoch, last_epoch, verbose
-        )
+        super().__init__(optimizer, successor, warmup_epoch, last_epoch, verbose)
 
     def get_lr(self):
         if self.last_epoch >= self.warmup_epoch:
             return self.successor.get_last_lr()
         if self.last_epoch == 0:
             return [self.min_lr for _ in self.base_lrs]
-        return [
-            lr * self.last_epoch / self.warmup_epoch for lr in self.base_lrs
-        ]
+        return [lr * self.last_epoch / self.warmup_epoch for lr in self.base_lrs]
 
 
 def build_lr_scheduler(optimizer, optim_cfg):
@@ -136,14 +111,12 @@ def build_lr_scheduler(optimizer, optim_cfg):
 
         if optim_cfg.WARMUP_TYPE == "constant":
             scheduler = ConstantWarmupScheduler(
-                optimizer, scheduler, optim_cfg.WARMUP_EPOCH,
-                optim_cfg.WARMUP_CONS_LR
+                optimizer, scheduler, optim_cfg.WARMUP_EPOCH, optim_cfg.WARMUP_CONS_LR
             )
 
         elif optim_cfg.WARMUP_TYPE == "linear":
             scheduler = LinearWarmupScheduler(
-                optimizer, scheduler, optim_cfg.WARMUP_EPOCH,
-                optim_cfg.WARMUP_MIN_LR
+                optimizer, scheduler, optim_cfg.WARMUP_EPOCH, optim_cfg.WARMUP_MIN_LR
             )
 
         else:

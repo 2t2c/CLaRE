@@ -226,7 +226,7 @@ class CoOp(TrainerX):
 
     def build_model(self):
         cfg = self.cfg
-        classnames = self.dm.dataset.classnames
+        classnames = ["real", "fake"]
 
         print(f"Loading CLIP (backbone: {cfg.MODEL.BACKBONE.NAME})")
         clip_model = load_clip_to_cpu(cfg)
@@ -291,7 +291,7 @@ class CoOp(TrainerX):
         return loss_summary
 
     def parse_batch_train(self, batch):
-        input = batch["img"]
+        input = batch["image"]
         label = batch["label"]
         input = input.to(self.device)
         label = label.to(self.device)
