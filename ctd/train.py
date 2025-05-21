@@ -5,11 +5,7 @@ from dassl.utils import setup_logger, set_random_seed, collect_env_info
 from dassl.config import get_cfg_default
 from dassl.engine import build_trainer
 
-# custom
 import trainers.coop
-import trainers.clip_adapter
-import trainers.clip_zero_shot
-import trainers.fine_tuned
 import trainers.cocoop
 
 
@@ -90,7 +86,7 @@ def extend_cfg(cfg):
 def setup_cfg(args):
     cfg = get_cfg_default()
     extend_cfg(cfg)
-
+    cfg.set_new_allowed(True)
     # 1. From the dataset config file
     if args.dataset_config_file:
         cfg.merge_from_file(args.dataset_config_file)
@@ -103,7 +99,8 @@ def setup_cfg(args):
     reset_cfg(cfg, args)
 
     # 4. From optional input arguments
-    cfg.merge_from_list(args.opts)
+    print(cfg)
+    # cfg.merge_from_list(args.opts)
 
     cfg.freeze()
 

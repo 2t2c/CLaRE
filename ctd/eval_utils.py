@@ -1,49 +1,5 @@
 import argparse
-import torch
-import glob
-
-from dassl.utils import setup_logger, set_random_seed, collect_env_info
 from dassl.config import get_cfg_default
-from dassl.engine import build_trainer
-
-# custom
-
-# import datasets.imagenet
-import datasets.guided
-import datasets.biggan
-import datasets.cyclegan
-import datasets.dalle2
-import datasets.deepfake
-import datasets.gaugan
-import datasets.glide_50_27
-import datasets.glide_100_10
-import datasets.glide_100_27
-import datasets.ldm_100
-import datasets.ldm_200
-import datasets.ldm_200_cfg
-import datasets.stargan
-import datasets.stylegan
-import datasets.stylegan2
-import datasets.stylegan3
-import datasets.sd_512x512
-import datasets.sdxl
-import datasets.dalle3
-import datasets.taming
-import datasets.eg3d
-import datasets.firefly
-import datasets.midjourney_v5
-import datasets.progan
-import datasets.faceswap
-import datasets.midjourney
-import datasets.collab_diff
-import datasets.starganv2
-import datasets.styleclip
-import datasets.whichfaceisreal
-
-import trainers.coop
-import trainers.clip_adapter
-import trainers.cocoop
-import trainers.zsclip
 
 
 def print_args(args, cfg):

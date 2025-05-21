@@ -21,63 +21,7 @@ from dassl.utils import (
     resume_from_checkpoint,
     load_pretrained_weights,
 )
-from dassl.modeling import build_head, build_backbone
 from dassl.evaluation import build_evaluator
-
-
-class SimpleNet(nn.Module):
-    """A simple neural network composed of a CNN backbone
-    and optionally a head such as mlp for classification.
-    """
-
-    def __init__(self, cfg, model_cfg, num_classes, **kwargs):
-        super().__init__()
-        self.backbone = build_backbone(
-            model_cfg.BACKBONE.NAME,
-            verbose=cfg.VERBOSE,
-            pretrained=model_cfg.BACKBONE.PRETRAINED,
-            **kwargs,
-        )
-        fdim = self.backbone.out_features
-
-        self.head = None
-        if model_cfg.HEAD.NAME and model_cfg.HEAD.HIDDEN_LAYERS:
-            self.head = build_head(
-                model_cfg.HEAD.NAME,
-                verbose=cfg.VERBOSE,
-                in_features=fdim,
-                hidden_layers=model_cfg.HEAD.HIDDEN_LAYERS,
-                activation=model_cfg.HEAD.ACTIVATION,
-                bn=model_cfg.HEAD.BN,
-                dropout=model_cfg.HEAD.DROPOUT,
-                **kwargs,
-            )
-            fdim = self.head.out_features
-
-        self.classifier = None
-        if num_classes > 0:
-            self.classifier = nn.Linear(fdim, num_classes)
-
-        self._fdim = fdim
-
-    @property
-    def fdim(self):
-        return self._fdim
-
-    def forward(self, x, return_feature=False):
-        f = self.backbone(x)
-        if self.head is not None:
-            f = self.head(f)
-
-        if self.classifier is None:
-            return f
-
-        y = self.classifier(f)
-
-        if return_feature:
-            return y, f
-
-        return y
 
 
 class TrainerBase:
@@ -305,7 +249,7 @@ class TrainerBase:
 class SimpleTrainer(TrainerBase):
     """A simple trainer class implementing generic functions."""
 
-    def __init__(self, cfg, dataset_cfg):
+    def __init__(self, cfg):
         super().__init__()
         self.check_cfg(cfg)
 
@@ -320,7 +264,7 @@ class SimpleTrainer(TrainerBase):
         self.output_dir = cfg.OUTPUT_DIR
 
         self.cfg = cfg
-        self.build_data_loader(dataset_cfg)
+        self.build_data_loader()
         self.build_model()
         self.evaluator = build_evaluator(cfg, lab2cname=self.lab2cname)
         self.best_result = -np.inf
@@ -337,13 +281,13 @@ class SimpleTrainer(TrainerBase):
         """
         pass
 
-    def build_data_loader(self, dataset_cfg):
+    def build_data_loader(self):
         """Create essential data-related attributes.
 
         A re-implementation of this method must create the
         same attributes (self.dm is optional).
         """
-        dm = DataManager(self.cfg, dataset_cfg)
+        dm = DataManager(self.cfg)
 
         self.train_loader_x = dm.train_loader
         self.train_loader_u = None
@@ -367,7 +311,7 @@ class SimpleTrainer(TrainerBase):
         cfg = self.cfg
 
         print("Building model")
-        self.model = SimpleNet(cfg, cfg.MODEL, self.num_classes)
+        self.model = None
         print("Num Classes: ", self.num_classes)
         if cfg.MODEL.INIT_WEIGHTS:
             load_pretrained_weights(self.model, cfg.MODEL.INIT_WEIGHTS)
@@ -492,94 +436,6 @@ class SimpleTrainer(TrainerBase):
         names = self.get_model_names(names)
         name = names[0]
         return self._optims[name].param_groups[0]["lr"]
-
-
-class TrainerXU(SimpleTrainer):
-    """A base trainer using both labeled and unlabeled data.
-
-    In the context of domain adaptation, labeled and unlabeled data
-    come from source and target domains respectively.
-
-    When it comes to semi-supervised learning, all data comes from the
-    same domain.
-    """
-
-    def run_epoch(self):
-        self.set_model_mode("train")
-        losses = MetricMeter()
-        batch_time = AverageMeter()
-        data_time = AverageMeter()
-
-        # Decide to iterate over labeled or unlabeled dataset
-        len_train_loader_x = len(self.train_loader_x)
-        len_train_loader_u = len(self.train_loader_u)
-        if self.cfg.TRAIN.COUNT_ITER == "train_x":
-            self.num_batches = len_train_loader_x
-        elif self.cfg.TRAIN.COUNT_ITER == "train_u":
-            self.num_batches = len_train_loader_u
-        elif self.cfg.TRAIN.COUNT_ITER == "smaller_one":
-            self.num_batches = min(len_train_loader_x, len_train_loader_u)
-        else:
-            raise ValueError
-
-        train_loader_x_iter = iter(self.train_loader_x)
-        train_loader_u_iter = iter(self.train_loader_u)
-
-        end = time.time()
-        for self.batch_idx in range(self.num_batches):
-            try:
-                batch_x = next(train_loader_x_iter)
-            except StopIteration:
-                train_loader_x_iter = iter(self.train_loader_x)
-                batch_x = next(train_loader_x_iter)
-
-            try:
-                batch_u = next(train_loader_u_iter)
-            except StopIteration:
-                train_loader_u_iter = iter(self.train_loader_u)
-                batch_u = next(train_loader_u_iter)
-
-            data_time.update(time.time() - end)
-            loss_summary = self.forward_backward(batch_x, batch_u)
-            batch_time.update(time.time() - end)
-            losses.update(loss_summary)
-
-            meet_freq = (self.batch_idx + 1) % self.cfg.TRAIN.PRINT_FREQ == 0
-            only_few_batches = self.num_batches < self.cfg.TRAIN.PRINT_FREQ
-            if meet_freq or only_few_batches:
-                nb_remain = 0
-                nb_remain += self.num_batches - self.batch_idx - 1
-                nb_remain += (self.max_epoch - self.epoch - 1) * self.num_batches
-                eta_seconds = batch_time.avg * nb_remain
-                eta = str(datetime.timedelta(seconds=int(eta_seconds)))
-
-                info = []
-                info += [f"epoch [{self.epoch + 1}/{self.max_epoch}]"]
-                info += [f"batch [{self.batch_idx + 1}/{self.num_batches}]"]
-                info += [f"time {batch_time.val:.3f} ({batch_time.avg:.3f})"]
-                info += [f"data {data_time.val:.3f} ({data_time.avg:.3f})"]
-                info += [f"{losses}"]
-                info += [f"lr {self.get_current_lr():.4e}"]
-                info += [f"eta {eta}"]
-                print(" ".join(info))
-
-            n_iter = self.epoch * self.num_batches + self.batch_idx
-            for name, meter in losses.meters.items():
-                self.write_scalar("train/" + name, meter.avg, n_iter)
-            self.write_scalar("train/lr", self.get_current_lr(), n_iter)
-
-            end = time.time()
-
-    def parse_batch_train(self, batch_x, batch_u):
-        input_x = batch_x["img"]
-        label_x = batch_x["label"]
-        input_u = batch_u["img"]
-
-        input_x = input_x.to(self.device)
-        label_x = label_x.to(self.device)
-        input_u = input_u.to(self.device)
-
-        return input_x, label_x, input_u
 
 
 class TrainerX(SimpleTrainer):

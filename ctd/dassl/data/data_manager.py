@@ -1,17 +1,16 @@
 import torch
 from torch.utils.data import DataLoader
 
-from src.dataset import CTD
+from .dataset import CTD
 
 
 def build_data_loader(
     cfg,
-    dataset_cfg,
     batch_size=64,
     is_train=True,
 ):
     mode = "train" if is_train else "test"
-    dataset = CTD(dataset_cfg, mode=mode)
+    dataset = CTD(cfg, mode=mode)
     data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -24,10 +23,9 @@ def build_data_loader(
 
 
 class DataManager:
-    def __init__(self, cfg, dataset_cfg):
+    def __init__(self, cfg):
         train_loader = build_data_loader(
             cfg,
-            dataset_cfg,
             batch_size=cfg.DATALOADER.TRAIN_X.BATCH_SIZE,
             is_train=True,
         )
@@ -36,14 +34,12 @@ class DataManager:
         # if dataset_cfg.val:
         #     val_loader = build_data_loader(
         #         cfg,
-        #         dataset_cfg,
         #         batch_size=cfg.DATALOADER.TEST.BATCH_SIZE,
         #         is_train=False,
         #     )
 
         test_loader = build_data_loader(
             cfg,
-            dataset_cfg,
             batch_size=cfg.DATALOADER.TEST.BATCH_SIZE,
             is_train=False,
         )

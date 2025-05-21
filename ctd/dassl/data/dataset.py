@@ -1,12 +1,5 @@
-"""
-Collection of datasets for deepfake detection.
-"""
-
-import argparse
-import yaml
 import os
 import json
-import pickle
 import numpy as np
 from copy import deepcopy
 import cv2
@@ -18,16 +11,12 @@ from torch.utils.data import Dataset
 
 try:
     # Relative import for package use
-    from .utils import *
+    from .utils import IsotropicResize, png2jpg
 except ImportError:
     # Fallback for direct script execution
-    from utils import *
+    from utils import IsotropicResize, png2jpg
 import albumentations as A
 import logging
-from rich import print as rprint
-from rich.table import Table
-from rich.console import Console
-from collections import Counter
 
 # fetch logger
 logger = logging.getLogger("fomo_logger")
@@ -50,113 +39,6 @@ FFpp_pool = [
 
 # dataset directory
 DATASET_DIR = "/scratch-shared/scur0555/datasets"
-
-
-class UFD(Dataset):
-    def __init__(
-        self,
-        real_path,
-        fake_path,
-        data_mode,
-        max_sample,
-        arch,
-        jpeg_quality=None,
-        gaussian_sigma=None,
-    ):
-        assert data_mode in ["wang2020", "ours"]
-        self.jpeg_quality = jpeg_quality
-        self.gaussian_sigma = gaussian_sigma
-
-        # = = = = = = data path = = = = = = = = = #
-        if type(real_path) is str and type(fake_path) is str:
-            real_list, fake_list = self.read_path(
-                real_path, fake_path, data_mode, max_sample
-            )
-        else:
-            real_list = []
-            fake_list = []
-            for real_p, fake_p in zip(real_path, fake_path):
-                real_l, fake_l = self.read_path(real_p, fake_p, data_mode, max_sample)
-                real_list += real_l
-                fake_list += fake_l
-
-        self.total_list = real_list + fake_list
-
-        # = = = = = =  label = = = = = = = = = #
-
-        self.labels_dict = {}
-        for i in real_list:
-            self.labels_dict[i] = 0
-        for i in fake_list:
-            self.labels_dict[i] = 1
-
-        stat_from = "imagenet" if arch.lower().startswith("imagenet") else "clip"
-        self.transform = transforms.Compose(
-            [
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=MEAN[stat_from], std=STD[stat_from]),
-            ]
-        )
-
-    def recursively_read(
-        self, rootdir, must_contain, exts=["png", "jpg", "JPEG", "jpeg", "bmp"]
-    ):
-        out = []
-        for r, d, f in os.walk(rootdir):
-            for file in f:
-                if (file.split(".")[1] in exts) and (
-                    must_contain in os.path.join(r, file)
-                ):
-                    out.append(os.path.join(r, file))
-        return out
-
-    def get_list(self, path, must_contain=""):
-        if ".pickle" in path:
-            with open(path, "rb") as f:
-                image_list = pickle.load(f)
-            image_list = [item for item in image_list if must_contain in item]
-        else:
-            image_list = self.recursively_read(path, must_contain)
-        return image_list
-
-    def read_path(self, real_path, fake_path, data_mode, max_sample):
-        if data_mode == "wang2020":
-            real_list = self.get_list(real_path, must_contain="0_real")
-            fake_list = self.get_list(fake_path, must_contain="1_fake")
-        else:
-            real_list = self.get_list(real_path)
-            fake_list = self.get_list(fake_path)
-
-        if max_sample is not None:
-            if (max_sample > len(real_list)) or (max_sample > len(fake_list)):
-                max_sample = 100
-                print("not enough images, max_sample falling to 100")
-            random.shuffle(real_list)
-            random.shuffle(fake_list)
-            real_list = real_list[0:max_sample]
-            fake_list = fake_list[0:max_sample]
-
-        assert len(real_list) == len(fake_list)
-
-        return real_list, fake_list
-
-    def __len__(self):
-        return len(self.total_list)
-
-    def __getitem__(self, idx):
-        img_path = self.total_list[idx]
-
-        label = self.labels_dict[img_path]
-        img = Image.open(img_path).convert("RGB")
-
-        if self.gaussian_sigma is not None:
-            img = gaussian_blur(img, self.gaussian_sigma)
-        if self.jpeg_quality is not None:
-            img = png2jpg(img, self.jpeg_quality)
-
-        img = self.transform(img)
-        return img, label
 
 
 class DF40(Dataset):
@@ -225,9 +107,9 @@ class DF40(Dataset):
         self.image_list, self.label_list = image_list, label_list
 
         # for debugging
-        if self.debug: 
-            self.image_list = self.image_list[: min(5_000, len(self.image_list))]
-            self.label_list = self.label_list[: min(5_000, len(self.image_list))]
+        if self.debug:
+            self.image_list = self.image_list[: min(10_000, len(self.image_list))]
+            self.label_list = self.label_list[: min(10_000, len(self.image_list))]
 
         # Create a dictionary containing the image and label lists
         self.data_dict = {
@@ -325,7 +207,12 @@ class DF40(Dataset):
 
         # Try to get the dataset information from the JSON file
         try:
-            with open(os.path.join(self.config['configs_folder'], dataset_name + '.json'), 'r') as f:
+            with open(
+                os.path.join(
+                    self.config["dataset_json_folder"], dataset_name + ".json"
+                ),
+                "r",
+            ) as f:
                 dataset_info = json.load(f)
         except Exception as e:
             print(e)
@@ -353,7 +240,7 @@ class DF40(Dataset):
         for label in dataset_info[dataset_name]:
             sub_dataset_info = dataset_info[dataset_name][label][self.mode]
             # Special case for FaceForensics++ and DeepFakeDetection, choose the compression type
-            if cp == None and dataset_name in [
+            if cp is None and dataset_name in [
                 "FF-DF",
                 "FF-F2F",
                 "FF-FS",
@@ -524,8 +411,6 @@ class DF40(Dataset):
             if img is None:
                 raise ValueError("Loaded image is None: {}".format(file_path))
         # image processing
-        if self.gaussian_sigma is not None:
-            img = gaussian_blur(img, self.gaussian_sigma)
         if self.jpeg_quality is not None and file_path.endswith(".png"):
             img = Image.fromarray(img)
             img = png2jpg(img, self.jpeg_quality)
@@ -716,7 +601,7 @@ class DF40(Dataset):
             elif self.config["model_name"] == "sbi" and self.config["with_landmark"]:
                 try:
                     landmarks = self.load_landmark(landmark_path)
-                except:
+                except Exception as _:
                     landmarks = None
             else:
                 landmarks = None
@@ -835,210 +720,6 @@ class DF40(Dataset):
         return len(self.image_list)
 
 
-class LARE(DF40):
-    def __init__(
-        self,
-        config,
-        mode,
-        img_size=224,
-        val_ratio=None,
-        split_anchor=True,
-        jpeg_quality=None,
-        gaussian_sigma=None,
-        debug=False,
-    ):
-        # initialize DF40 first (inherits data loading, image_list, label_list, etc.)
-        super().__init__(
-            config,
-            jpeg_quality=jpeg_quality,
-            gaussian_sigma=gaussian_sigma,
-            debug=debug,
-            mode=mode,
-        )
-        self.img_size = img_size
-        self.train_list = []
-        self.anchor_list = []
-        self.anchor = False
-        self.val = False
-        self.split_anchor = split_anchor
-        self.transform = A.Compose(
-            [
-                A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
-                A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
-                A.OneOf(
-                    [
-                        A.GaussianBlur(blur_limit=(3, 7), p=1.0),
-                        A.GaussNoise(p=1.0),
-                    ],
-                    p=0.5,
-                ),
-                A.RandomRotate90(p=0.33),
-                # A.Flip(p=0.33),
-            ],
-            p=1.0,
-        )
-
-    def load_loss_maps(self, map_file):
-        map_paths = []
-        # opening the map file
-        with open(map_file, "r") as f:
-            for line in f:
-                image_path, _ = line.strip().split("\t")
-                map_paths.append(image_path)
-
-        return map_paths
-
-    def __len__(self):
-        assert len(self.image_list) == len(self.label_list), (
-            "Number of images and labels are not equal"
-        )
-        # assert len(self.image_list) == len(self.map_paths), 'Number of images and loss maps are not equal'
-        return len(self.image_list)
-
-    def __getitem__(self, index, no_norm=False):
-        # Get the image paths and label
-        image_paths = self.data_dict["image"][index]
-        label = self.data_dict["label"][index]
-
-        if not isinstance(image_paths, list):
-            # for the image-level IO, only one frame is used
-            image_paths = [image_paths]
-
-        image_tensors = []
-        landmark_tensors = []
-        mask_tensors = []
-        loss_map_tensors = []
-        augmentation_seed = None
-
-        for image_path in image_paths:
-            # Initialize a new seed for data augmentation at the start of each video
-            if self.video_level and image_path == image_paths[0]:
-                augmentation_seed = random.randint(0, 2**32 - 1)
-
-            # Get the loss map, mask and landmark paths
-            mask_path = image_path.replace("frames", "masks")  # Use .png for mask
-            landmark_path = image_path.replace("frames", "landmarks").replace(
-                ".png", ".npy"
-            )  # Use .npy for landmark
-            loss_map_path = image_path.replace("frames", "loss_maps").replace(
-                ".png", ".pt"
-            )  # Use .pt for loss map
-
-            # Load the image
-            try:
-                # replace the hard-coded paths from the config
-                image_path = image_path.replace(
-                    "deepfakes_detection_datasets/FaceForensics++",
-                    f"{DATASET_DIR}/face_forensics/FaceForensics++",
-                )
-                image_path = image_path.replace(
-                    "deepfakes_detection_datasets/Celeb-DF-v2",
-                    f"{DATASET_DIR}/celeb_df/Celeb-DF-v2",
-                )
-                image_path = image_path.replace(
-                    "deepfakes_detection_datasets/DF40_train",
-                    f"{DATASET_DIR}/df40/{self.mode}",
-                )
-                image_path = image_path.replace(
-                    "deepfakes_detection_datasets/DF40",
-                    f"{DATASET_DIR}/df40/{self.mode}",
-                )
-                image = self.load_rgb(image_path)
-            except Exception as e:
-                # Skip this image and return the first one
-                logger.warning(f"Error loading image at index {index, image_path}: {e}")
-                return self.__getitem__(0)
-
-            # Convert to numpy array for data augmentation
-            image = np.array(image)
-
-            # Load the loss map
-            # deugging (hardcoded)
-            loss_map_path = "/home/scur0555/udit/lare/test/outputs/heygen/fake_000.pt"
-            loss_map = torch.load(loss_map_path)
-
-            # Load mask and landmark (if needed)
-            if self.mode == "train" and self.config["with_mask"]:
-                mask = self.load_mask(mask_path)
-            else:
-                mask = None
-            if self.mode == "train" and self.config["with_landmark"]:
-                landmarks = self.load_landmark(landmark_path)
-            elif self.config["model_name"] == "sbi" and self.config["with_landmark"]:
-                try:
-                    landmarks = self.load_landmark(landmark_path)
-                except:
-                    landmarks = None
-            else:
-                landmarks = None
-
-            # Do Data Augmentation
-            if self.mode == "train" and self.config["use_data_augmentation"]:
-                image_trans, landmarks_trans, mask_trans = self.data_aug(
-                    image, landmarks, mask, augmentation_seed
-                )
-            else:
-                image_trans, landmarks_trans, mask_trans = (
-                    deepcopy(image),
-                    deepcopy(landmarks),
-                    deepcopy(mask),
-                )
-
-            # To tensor and normalize
-            if not no_norm:
-                image_trans = self.normalize(self.to_tensor(image_trans))
-                if self.mode == "train" and self.config["with_landmark"]:
-                    landmarks_trans = torch.from_numpy(landmarks_trans)
-                if self.mode == "train" and self.config["with_mask"]:
-                    mask_trans = torch.from_numpy(mask_trans)
-
-            image_tensors.append(image_trans)
-            landmark_tensors.append(landmarks_trans)
-            mask_tensors.append(mask_trans)
-            loss_map_tensors.append(loss_map)
-
-        if self.video_level:
-            # Stack image tensors along a new dimension (time)
-            image_tensors = torch.stack(image_tensors, dim=0)
-            # Stack landmark and mask tensors along a new dimension (time)
-            if not any(
-                landmark is None or (isinstance(landmark, list) and None in landmark)
-                for landmark in landmark_tensors
-            ):
-                landmark_tensors = torch.stack(landmark_tensors, dim=0)
-            if not any(
-                m is None or (isinstance(m, list) and None in m) for m in mask_tensors
-            ):
-                mask_tensors = torch.stack(mask_tensors, dim=0)
-        else:
-            # Get the first image tensor
-            image_tensors = image_tensors[0]
-            # Get the first loss map tensor
-            loss_map_tensors = loss_map_tensors[0]
-            # Get the first landmark and mask tensors
-            if not any(
-                landmark is None or (isinstance(landmark, list) and None in landmark)
-                for landmark in landmark_tensors
-            ):
-                landmark_tensors = landmark_tensors[0]
-            if not any(
-                m is None or (isinstance(m, list) and None in m) for m in mask_tensors
-            ):
-                mask_tensors = mask_tensors[0]
-
-        return image_tensors, label, loss_map_tensors
-
-    @staticmethod
-    def collate_fn(batch):
-        images, labels, loss_maps = zip(*batch)
-
-        images = torch.stack(images, dim=0)
-        labels = torch.LongTensor(labels)
-        loss_maps = torch.stack(loss_maps, dim=0)
-
-        return {"image": images, "label": labels, "loss_map": loss_maps}
-
-
 class CTD(DF40):
     def __init__(
         self,
@@ -1144,287 +825,3 @@ class CTD(DF40):
         images = torch.stack(images, dim=0)
         labels = torch.LongTensor(labels)
         return {"image": images, "label": labels}
-
-
-class CTD(DF40):
-    def __init__(self, config, mode,
-                 img_size=224, jpeg_quality=None,
-                 gaussian_sigma=None, debug=False):
-        # initialize DF40 first (inherits data loading, image_list, label_list, etc.)
-        super().__init__(config, jpeg_quality=jpeg_quality,
-                        gaussian_sigma=gaussian_sigma, debug=debug,
-                        mode=mode)
-        self.img_size = img_size
-        self.train_list = []
-        self.anchor = False
-        self.transform = A.Compose([
-            A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
-            A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
-            A.OneOf([
-                A.GaussianBlur(blur_limit=(3, 7), p=1.0),
-                A.GaussNoise(p=1.0),
-            ], p=0.5),
-            A.RandomRotate90(p=0.33),
-            # A.Flip(p=0.33),
-        ], p=1.0)
-
-    def __len__(self):
-        assert len(self.image_list) == len(self.label_list), 'Number of images and labels are not equal'
-        return len(self.image_list)
-
-    def __getitem__(self, index, no_norm=False):
-        # Get the image paths and label
-        image_paths = self.data_dict['image'][index]
-        label = self.data_dict['label'][index]
-
-        if not isinstance(image_paths, list):
-            # for the image-level IO, only one frame is used
-            image_paths = [image_paths]
-
-        image_tensors = []
-        landmark_tensors = []
-        mask_tensors = []
-        loss_map_tensors = []
-        augmentation_seed = None
-
-        for image_path in image_paths:
-            # Initialize a new seed for data augmentation at the start of each video
-            if self.video_level and image_path == image_paths[0]:
-                augmentation_seed = random.randint(0, 2 ** 32 - 1)
-
-            # Load the image
-            try:
-                # replace the hard-coded paths from the config
-                image_path = image_path.replace("deepfakes_detection_datasets/FaceForensics++",
-                                                f"{DATASET_DIR}/face_forensics/FaceForensics++")
-                image_path = image_path.replace("deepfakes_detection_datasets/Celeb-DF-v2",
-                                                f"{DATASET_DIR}/celeb_df/Celeb-DF-v2")
-                image_path = image_path.replace("deepfakes_detection_datasets/DF40_train",
-                                                f"{DATASET_DIR}/df40/{self.mode}")
-                image_path = image_path.replace("deepfakes_detection_datasets/DF40",
-                                                f"{DATASET_DIR}/df40/{self.mode}")
-                image = self.load_rgb(image_path)
-            except Exception as e:
-                # Skip this image and return the first one
-                logger.warning(f"Error loading image at index {index, image_path}: {e}")
-                return self.__getitem__(0)
-
-            # Convert to numpy array for data augmentation
-            image = np.array(image)
-
-            # Do Data Augmentation
-            if self.mode == 'train' and self.config['use_data_augmentation']:
-                image_trans, _, _ = self.data_aug(image, augmentation_seed)
-            else:
-                image_trans = deepcopy(image)
-
-            # To tensor and normalize
-            if not no_norm:
-                image_trans = self.normalize(self.to_tensor(image_trans))
-
-            image_tensors.append(image_trans)
-
-        if self.video_level:
-            # Stack image tensors along a new dimension (time)
-            image_tensors = torch.stack(image_tensors, dim=0)
-        else:
-            # Get the first image tensor
-            image_tensors = image_tensors[0]
-
-        return image_tensors, label
-
-
-    @staticmethod
-    def collate_fn(batch):
-        images, labels = zip(*batch)
-        images = torch.stack(images, dim=0)
-        labels = torch.LongTensor(labels)
-        return {
-            'image': images,
-            'label': labels,
-        }
-
-
-def describe_dataloader(dataloader, title="DataLoader Summary"):
-    """
-    Method to print dataset statistics from a PyTorch DataLoader:
-    - Total number of samples
-    - Total number of batches
-    - Class distribution (if available)
-    - Sample data shape and dtype
-    """
-    console = Console()
-    dataset = dataloader.dataset
-    total_samples = len(dataset)
-    total_batches = len(dataloader)
-
-    table = Table(title=title)
-
-    table.add_column("Property", style="cyan")
-    table.add_column("Value", style="magenta")
-    table.add_row("Total samples", str(total_samples))
-    table.add_row(
-        f"Total batches (batch_size={dataloader.batch_size})", str(total_batches)
-    )
-    table.add_row("Num Workers", str(dataloader.num_workers))
-
-    # class info
-    class_info_found = False
-    if hasattr(dataset, "classes"):
-        table.add_row("Classes", str(dataset.classes))
-        class_info_found = True
-    if hasattr(dataset, "class_to_idx"):
-        table.add_row("Class to index mapping", str(dataset.class_to_idx))
-        class_info_found = True
-    if hasattr(dataset, "targets"):
-        targets = dataset.targets
-        if isinstance(targets, list):
-            targets = torch.tensor(targets)
-        label_counts = Counter(targets.tolist())
-        table.add_row("Label counts", str(dict(label_counts)))
-        class_info_found = True
-    if not class_info_found:
-        table.add_row(
-            "Class/Label info", "No class/label info found in dataset attributes."
-        )
-
-    # sample data shape and dtype
-    try:
-        first_batch = next(iter(dataloader))
-        if isinstance(first_batch, (list, tuple)):
-            # Show shape of first input and sample label summary
-            shape_info = str(first_batch[0].shape)
-            label_info = str(first_batch[1])
-            table.add_row("Input sample shape", shape_info)
-            table.add_row("Label sample", label_info)
-        elif isinstance(first_batch, dict):
-            table.add_row("Sample keys", str(list(first_batch.keys())))
-            for key, value in first_batch.items():
-                if hasattr(value, "shape"):
-                    shape = tuple(value.shape)
-                else:
-                    shape = "N/A"
-                dtype = getattr(value, "dtype", type(value).__name__)
-                table.add_row(
-                    f"{key.capitalize()} shape & dtype",
-                    str(shape) + f", ({str(dtype)})",
-                )
-        else:
-            table.add_row("Sample", str(type(first_batch)))
-    except Exception as e:
-        table.add_row("Sample inspection error", str(e))
-
-    console.print(table)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--dataset", type=str, choices=["ufd", "df40", "lare", "ctd"], default="lare"
-    )
-    # add UFD-specific arguments
-    parser.add_argument(
-        "--real_path", type=str, default=None, help="dir name or a pickle"
-    )
-    parser.add_argument(
-        "--fake_path", type=str, default=None, help="dir name or a pickle"
-    )
-    parser.add_argument("--data_mode", type=str, default=None, help="wang2020 or ours")
-    parser.add_argument(
-        "--max_sample",
-        type=int,
-        default=1000,
-        help="only check this number of images for both fake/real",
-    )
-    parser.add_argument("--arch", default="clip", type=str)
-    # add DF40-specific config path
-    parser.add_argument(
-        "--df40_mode",
-        type=str,
-        choices=["train", "test"],
-        default="train",
-        help="DF40 dataset mode name",
-    )
-    parser.add_argument("--df40_name", type=str, default=None, help="DF40 dataset name")
-    parser.add_argument(
-        "--df40_config", type=str, default="train_config.yaml", help="DF40 mode config"
-    )
-    # generic params
-    parser.add_argument("--batch_size", type=int, default=1)
-    parser.add_argument(
-        "--jpeg_quality",
-        type=int,
-        default=95,
-        help="100, 90, 80, ... 30. Used to test robustness of our model. Not apply if None",
-    )
-    parser.add_argument(
-        "--gaussian_sigma",
-        type=int,
-        default=None,
-        help="0,1,2,3,4.     Used to test robustness of our model. Not apply if None",
-    )
-
-    args = parser.parse_args()
-    display_args(args)
-
-    if args.dataset == "ufd":
-        dataset = UFD(
-            args.real_path,
-            args.fake_path,
-            args.data_mode,
-            args.max_sample,
-            args.arch,
-            jpeg_quality=args.jpeg_quality,
-            gaussian_sigma=args.gaussian_sigma,
-        )
-        loader = torch.utils.data.DataLoader(
-            dataset, batch_size=args.batch_size, shuffle=False, num_workers=4
-        )
-    elif args.dataset == "df40":
-        # load the config file
-        with open("./configs/" + args.df40_config, "r") as f:
-            config = yaml.safe_load(f)
-        if args.df40_name is not None:
-            config[f"{args.df40_mode}_dataset"] = args.df40_name
-        dataset = DF40(config=config, mode=args.df40_mode)
-        loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=args.batch_size,
-            shuffle=True if args.df40_mode == "train" else False,
-            num_workers=4,
-            collate_fn=dataset.collate_fn,
-        )
-    elif args.dataset == "lare":
-        # load the config file
-        with open("./configs/" + args.df40_config, "r") as f:
-            config = yaml.safe_load(f)
-        if args.df40_name is not None:
-            config[f"{args.df40_mode}_dataset"] = args.df40_name
-        dataset = LARE(
-            config=config, mode=args.df40_mode, jpeg_quality=args.jpeg_quality
-        )
-        loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=args.batch_size,
-            shuffle=True if args.df40_mode == "train" else False,
-            num_workers=4,
-            collate_fn=dataset.collate_fn,
-        )
-    elif args.dataset == "ctd":
-        # load the config file
-        with open("./configs/" + args.df40_config, "r") as f:
-            config = yaml.safe_load(f)
-        if args.df40_name is not None:
-            config[f"{args.df40_mode}_dataset"] = args.df40_name
-        dataset = CTD(
-            config=config, mode=args.df40_mode, jpeg_quality=args.jpeg_quality
-        )
-        loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=args.batch_size,
-            shuffle=True if args.df40_mode == "train" else False,
-            num_workers=4,
-            collate_fn=dataset.collate_fn,
-        )
-    rprint(f"Loaded dataset '{args.dataset}' successfully.")
-    describe_dataloader(loader)
