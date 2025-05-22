@@ -271,3 +271,152 @@ class MultiHeadMapAttention(nn.Module):
             out = self.dropout(out)
             out = self.layer_norm(queries + out)
         return out.squeeze()
+class ScaledDotProductWithMapAttention_modified(nn.Module):
+    '''
+    Scaled dot-product attention
+    '''
+
+    def __init__(self, d_in, d_out, d_k, d_v, h, dropout=.1):
+        '''
+        :param d_model: Output dimensionality of the model
+        :param d_k: Dimensionality of queries and keys
+        :param d_v: Dimensionality of values
+        :param h: Number of heads
+        d_in=1024, d_out=1024, d_k=64, d_v=64, h=8, dropout=.1, identity_map_reordering=False,
+                 spacial_dim=14
+        '''
+        super(ScaledDotProductWithMapAttention_modified, self).__init__()
+        self.d_in = d_in   # d_in=1024
+        self.fc_q = nn.Linear(d_in, h * d_k) # 1024 --> 512
+        self.fc_k = nn.Linear(d_in, h * d_k) # 1024 --> 512
+        self.fc_v = nn.Linear(d_in, h * d_v) # 1024 --> 512
+        self.fc_o = nn.Linear(h * d_v, d_out) # 512 --> 1024
+        self.dropout = nn.Dropout(dropout)
+
+        self.d_out = d_out  # d_out=1024
+        self.d_k = d_k   # d_k=64
+        self.d_v = d_v  # d_v=64
+        self.h = h  # h=8
+
+        self.init_weights()
+
+    def init_weights(self):
+        nn.init.xavier_uniform_(self.fc_q.weight)
+        nn.init.xavier_uniform_(self.fc_k.weight)
+        nn.init.xavier_uniform_(self.fc_v.weight)
+        nn.init.xavier_uniform_(self.fc_o.weight)
+        nn.init.constant_(self.fc_q.bias, 0)
+        nn.init.constant_(self.fc_k.bias, 0)
+        nn.init.constant_(self.fc_v.bias, 0)
+        nn.init.constant_(self.fc_o.bias, 0)
+
+    def forward(self, queries, keys, values, loss_map, attention_mask=None, attention_weights=None):
+        '''
+        Computes
+        :param queries: Queries (b_s, nq, d_model) 
+        :param keys: Keys (b_s, nk, d_model)
+        :param values: Values (b_s, nk, d_model)
+        :param attention_mask: Mask over attention values (b_s, h, nq, nk). True indicates masking.
+        :param attention_weights: Multiplicative weights for attention values (b_s, h, nq, nk).
+        :return:
+        '''
+        b_s, nq = queries.shape[:2] # queries dim=bs*1*1024 and  so nq=1
+        nk = keys.shape[1] # keys dim=bs*197*1024 , so nk=197
+
+        q = self.fc_q(queries).view(b_s, nq, self.h, self.d_k).permute(0, 2, 1, 3)  # (b_s, h, nq, d_k)
+        # bs*1*1024 --> bs*1*512 --> bs*1*8*64 --> bs*8*1*64
+        k = self.fc_k(keys).view(b_s, nk, self.h, self.d_k).permute(0, 2, 3, 1)  # (b_s, h, d_k, nk)
+        # bs*197*1024--> bs*197*512 --> bs*197*8*64 --> bs*8*64*197
+        v = self.fc_v(values).view(b_s, nk, self.h, self.d_v).permute(0, 2, 1, 3)  # (b_s, h, nk, d_v)
+        # bs*197*1024 --> bs*1*512 --> bs*197*8*64 --> bs*8*197*64
+
+        att = torch.matmul(q, k) / np.sqrt(self.d_k)  # (b_s, h, nq, nk)
+        # (bs*8*1*64) X (bs*8*64*197) ---> (bs*8*1*197)
+        if attention_weights is not None:
+            att = att * attention_weights
+
+        if attention_mask is not None:
+            att = att.masked_fill(attention_mask, -np.inf)
+
+        # w_g = loss_map.permute(0, 2, 1).unsqueeze(2)  # bs * 8 * 1 * 197
+        # bs*197*8 --> bs*8*197 --> bs*8*1*197
+        # w_a = att
+
+        # w_mn = torch.log(torch.clamp(w_g, min=1e-6)) + w_a
+        # print(w_a.shape)
+        # print(w_g.shape)
+        # w_mn = torch.softmax(w_a + w_g, -1)  ## bs * 8 * r * r
+        
+        w_mn = torch.softmax(att)
+
+        att = self.dropout(w_mn)
+
+        out = torch.matmul(att, v).permute(0, 2, 1, 3).contiguous().view(b_s, nq, self.h * self.d_v)  # (b_s, nq, h*d_v)
+        # (bs*8*1*197) X (bs*8*197*64) --> (bs*8*1*64) --> (bs*1*8*64) --> (bs*1*512)
+        out = self.fc_o(out)  # (b_s, nq, d_model)
+        # (bs*1*512) --> (bs*1*1024)
+        return out
+
+
+class MultiHeadMapAttention_modified(nn.Module):
+    """
+    Formula: MultiHead(Q, K, V) = Concat(head_1, ..., head_h)W^O
+    where head_i = Attention(QW_i^Q, KW_i^K, VW_i^V)
+
+    These are the dimensions expected before attention mechanism for feature_map (bs*1024*14*14) and loss_map (bs*8*14*14)
+    I mean the image features after image encoder are (bs*1024*14*14) and the loss map are (bs*4*32*32)
+    then loss_map feature are passed through adaptive ppoling to get dim as (bs*4*14*14)
+    after that we also increase the channel size to 8 and the final dimensions are (bs*8*14*14)
+    """
+    def __init__(self, d_in=1024, d_out=1024, d_k=64, d_v=64, h=8, dropout=.1, identity_map_reordering=False,
+                 spacial_dim=14):
+        super(MultiHeadMapAttention_modified, self).__init__()
+        
+        self.identity_map_reordering = identity_map_reordering
+        self.attention = ScaledDotProductWithMapAttention_modified(d_in=d_in, d_out=d_out, d_k=d_k, d_v=d_v, h=h)
+        self.dropout = nn.Dropout(p=dropout)
+        self.layer_norm = nn.LayerNorm(d_out)
+        # self.positional_embedding = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, d_in) / d_in ** 0.5)  # 197 * d_in
+        self.projection_loss_map_1= nn.Conv2d(8,32, kernel_size=(1, 1))
+        self.projection_loss_map_2= nn.Conv2d(32,64, kernel_size=(1, 1))
+        self.projection_loss_map_3= nn.Conv2d(64,128, kernel_size=(1, 1))
+        self.projection_loss_map_4= nn.Conv2d(128,256, kernel_size=(1, 1))
+        self.projection_loss_map_5= nn.Conv2d(256,1024, kernel_size=(1, 1))
+        # Separate positional embeddings for query (loss map) and key/value (image features)
+        self.pos_embed_kv = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, d_in) / d_in ** 0.5)  # 197 x 1024
+        self.pos_embed_q = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, d_in) / d_in ** 0.5)    # 197 x 128
+        
+    def forward(self, feature_map, loss_map, attention_mask=None, attention_weights=None):
+        # feature_map bs * 1024 * 14 * 14
+        # loss_map bs * 8 * 14 * 14
+
+        # In the next code line i am trying to increase the channels of the loss_map from 8 to 128
+        loss_map = self.projection_loss_map_5(self.projection_loss_map_4(self.projection_loss_map_3(self.projection_loss_map_2(self.projection_loss_map_1(loss_map)))))
+        # bs*8*14*14 --> bs*32*14*14 --> bs*64*14*14 --> bs*128*14*14 --> bs*256*14*14 --> bs*1024*14*14
+        x = feature_map.flatten(start_dim=2)  # bs * 1024 * 196
+        x = x.permute(0, 2, 1)  # bs * 196 * 1024
+        # In the next line the global vector is added in the begining
+        x = torch.cat([x.mean(dim=1, keepdim=True), x], dim=1)  # bs * 197 * 1024
+
+        loss_map = loss_map.flatten(start_dim=2)  # bs * 1024 * 196
+        loss_map = loss_map.permute(0, 2, 1)  # bs * 1024 * 128
+        loss_map = torch.cat([loss_map.mean(dim=1, keepdim=True), loss_map], dim=1)  # bs * 197 * 1024
+
+        x = x + self.pos_embed_kv[None, :, :].to(x.dtype)  # bs * 197 * 1024
+        loss_map = loss_map + self.pos_embed_q[None, :, :].to(loss_map.dtype)  # For queries: bs * 197 * 1024
+        queries = loss_map[:, :1] # bs*1*1024 global vector for query
+        keys = x  # bs*197*1024
+        values = x # bs*197*1024
+        if self.identity_map_reordering:
+            q_norm = self.layer_norm(queries) 
+            k_norm = self.layer_norm(keys)
+            v_norm = self.layer_norm(values)
+            out = self.attention(q_norm, k_norm, v_norm, loss_map, attention_mask, attention_weights)
+            # out dim = (bs*1*1024)
+            out = queries + self.dropout(torch.relu(out))
+        else:
+            out = self.attention(queries, keys, values, loss_map, attention_mask, attention_weights)
+            # out dim = (bs*1*1024)
+            out = self.dropout(out)
+            out = self.layer_norm(queries + out)
+        return out.squeeze()  # out dim = (bs*1024)
