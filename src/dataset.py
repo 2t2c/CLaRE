@@ -1266,7 +1266,7 @@ def describe_dataloader(dataloader, title="DataLoader Summary"):
     table.add_row(
         f"Total batches (batch_size={dataloader.batch_size})", str(total_batches)
     )
-    table.add_row("Num Workers", str(dataloader.num_workers))
+    table.add_row(f"Num Workers", str(dataloader.num_workers))
 
     # class info
     class_info_found = False
@@ -1317,10 +1317,11 @@ def describe_dataloader(dataloader, title="DataLoader Summary"):
     console.print(table)
 
 
+# test the dataset pipeline
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--dataset", type=str, choices=["ufd", "df40", "lare", "ctd"], default="lare"
+        "--dataset", type=str, choices=["ufd", "df40", "lare"], default="lare"
     )
     # add UFD-specific arguments
     parser.add_argument(

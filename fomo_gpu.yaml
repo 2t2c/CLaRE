@@ -1,0 +1,25 @@
+name: fomo_gpu
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - torch==2.7.0+cu128
+      - torchvision==0.22.0+cu128
+      - torchaudio==2.7.0+cu128
+      - diffusers
+      - transformers
+      - tokenizers
+      - huggingface-hub
+      - tqdm
+      - tabulate
+      - pyyaml
+      - requests
+      - imageio
+      - pillow
+      - pandas
+      - scikit-learn
+      - scipy
+      - scikit-image
+      - matplotlib

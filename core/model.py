@@ -23,16 +23,18 @@ class CLIPModel(nn.Module):
         super(CLIPModel, self).__init__()
         self.name = name
         if pretrained:
-            self.clip_model, _, self.preprocess = open_clip.create_model_and_transforms(name,
-                                                                                        pretrained=pretrained,
-                                                                                        device="cpu")
+            self.clip_model, _, self.preprocess = open_clip.create_model_and_transforms(
+                name, pretrained=pretrained, device="cpu"
+            )
         else:
             self.clip_model, self.preprocess = clip.load(name, device="cpu")
         self.text_input = clip.tokenize(["Real Photo", "Fake Photo"])
 
     def forward(self, image_input, training=True):
         if training:
-            logits_per_image, _ = self.clip_model(image_input, self.text_input.to(image_input.device))
+            logits_per_image, _ = self.clip_model(
+                image_input, self.text_input.to(image_input.device)
+            )
             return None, logits_per_image
         else:
             image_feats = self.clip_model.encode_image(image_input)
@@ -49,9 +51,9 @@ class CLIPClassifierWMap(nn.Module):
         super(CLIPClassifierWMap, self).__init__()
         self.multiplier = 3
         if pretrained:
-            self.clip_model, _, self.preprocess = open_clip.create_model_and_transforms(name,
-                                                                                        pretrained=pretrained,
-                                                                                        device="cpu")
+            self.clip_model, _, self.preprocess = open_clip.create_model_and_transforms(
+                name, pretrained=pretrained, device="cpu"
+            )
         else:
             self.clip_model, self.preprocess = clip.load(name, device="cpu")
         self.text_input = clip.tokenize(["Real Photo", "Fake Photo"])
@@ -121,13 +123,18 @@ class CLIPClassifierWMap(nn.Module):
                 if num_rois == 0:
                     aggregated_roi_feats.append(torch.zeros_like(image_feats[b]))
                 else:
-                    feats = roi_feats[roi_offset:roi_offset + num_rois]
+                    feats = roi_feats[roi_offset : roi_offset + num_rois]
                     aggregated_roi_feats.append(feats.mean(dim=0))
                     roi_offset += num_rois
             roi_feats = torch.stack(aggregated_roi_feats)  # (B, 1024)
-            features = torch.cat([image_feats, pooled_block3_feats, channel_weighted_feats, roi_feats], dim=1) # (B, 1024*multiplier)
+            features = torch.cat(
+                [image_feats, pooled_block3_feats, channel_weighted_feats, roi_feats],
+                dim=1,
+            )  # (B, 1024*multiplier)
         else:
-            features = torch.cat([image_feats, pooled_block3_feats, channel_weighted_feats], dim=1)  # (B, 1024*multiplier)
+            features = torch.cat(
+                [image_feats, pooled_block3_feats, channel_weighted_feats], dim=1
+            )  # (B, 1024*multiplier)
 
         logits = self.fc(features)
 

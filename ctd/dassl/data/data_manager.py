@@ -31,13 +31,11 @@ class DataManager:
             is_train=True,
         )
 
-        val_loader = None
-        # if dataset_cfg.val:
-        #     val_loader = build_data_loader(
-        #         cfg,
-        #         batch_size=cfg.DATALOADER.TEST.BATCH_SIZE,
-        #         is_train=False,
-        #     )
+        val_loader = build_data_loader(
+            cfg,
+            batch_size=cfg.DATALOADER.TEST.BATCH_SIZE,
+            is_train=False,
+        )
 
         test_loader = build_data_loader(
             cfg,

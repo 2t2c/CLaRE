@@ -2,7 +2,6 @@
 
 mode: train
 
-# log dir 
 log_dir: ~/fomo_logdir
 
 # Model Settings

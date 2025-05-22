@@ -4,6 +4,7 @@ Script to train the LaRE architecture pipeline.
 
 import os
 import sys
+
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core import get_model
@@ -16,7 +17,12 @@ import yaml
 import numpy as np
 import torch
 import torch.utils.data.distributed
-from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve, average_precision_score
+from sklearn.metrics import (
+    accuracy_score,
+    roc_auc_score,
+    roc_curve,
+    average_precision_score,
+)
 from sklearn.metrics import precision_recall_curve
 from torch import nn
 from torch import optim
@@ -58,13 +64,21 @@ class StatsMeter(object):
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
-        return param_group['lr']
+        return param_group["lr"]
 
 
-def train_one_epoch(model, train_data_loader, val_data_loader, 
-                    optimizer, epoch,
-                    loss_meter, auc_meter, args, device,
-                    step):
+def train_one_epoch(
+    model,
+    train_data_loader,
+    val_data_loader,
+    optimizer,
+    epoch,
+    loss_meter,
+    auc_meter,
+    args,
+    device,
+    step,
+):
     # set model to training mode
     model.train()
     # set variables
@@ -112,9 +126,10 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         # validation statistics
         if step % args.eval_every == 0:
             # save directly after training to avoid errors and wasted training
-            torch.save(model.state_dict(), os.path.join(args.out_dir, 'latest.pt'))
-            val_auc, val_acc, val_ap, val_raw_acc, val_r_acc, val_f_acc = validation_contrastive(model, val_data_loader,
-                                                                                                 step, device)
+            torch.save(model.state_dict(), os.path.join(args.out_dir, "latest.pt"))
+            val_auc, val_acc, val_ap, val_raw_acc, val_r_acc, val_f_acc = (
+                validation_contrastive(model, val_data_loader, step, device)
+            )
             if val_acc > best_val:
                 best_val = val_acc
                 best_step = step
@@ -122,11 +137,13 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
                     "state_dict": model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "best_val": best_val,
-                    "best_step": best_step
+                    "best_step": best_step,
                 }
                 name = "best.pth"
                 torch.save(ckpt, os.path.join(args.out_dir, name))
-                logger.info(f'Epoch {epoch}, Step {step}: New best val accuracy, model saved.')
+                logger.info(
+                    f"Epoch {epoch}, Step {step}: New best val accuracy, model saved."
+                )
                 auc_meter.update(best_val, images.shape[0])
 
             # log metrics to wandb
@@ -153,7 +170,7 @@ def validation_contrastive(model, data_loader, step, device):
     """
     Validation function for the model.
     """
-    logger.info('Evaluation Started!')
+    logger.info("Evaluation Started!")
     model.eval()
 
     gt_labels_list, pred_labels_list, prob_labels_list = [], [], []
@@ -172,7 +189,7 @@ def validation_contrastive(model, data_loader, step, device):
                     logits = model(images, loss_maps)
                     prob = torch.softmax(logits, dim=-1)  # bs * 2
             except:  # skip last batch
-                logger.info('Bad eval')
+                logger.info("Bad eval")
                 raise
                 # continue
             gt_labels_list.append(labels)
@@ -186,12 +203,14 @@ def validation_contrastive(model, data_loader, step, device):
 
     fpr, tpr, thres = roc_curve(gt_labels_list, prob_labels_list)
     thresh = thres[len(thres) // 2]
-    logger.info(f'Thresh Old: {thresh}')
-    precision, recall, thresholds = precision_recall_curve(gt_labels_list, prob_labels_list)
+    logger.info(f"Thresh Old: {thresh}")
+    precision, recall, thresholds = precision_recall_curve(
+        gt_labels_list, prob_labels_list
+    )
     f_score = precision * recall / (precision + recall)
     thresh = thresholds[np.argmax(f_score)]
     # thresh = 0.5
-    logger.info(f'Thresh New: {thresh}')
+    logger.info(f"Thresh New: {thresh}")
 
     pred_labels_list = np.array(prob_labels_list)
     pred_labels_list[pred_labels_list > thresh] = 1
@@ -203,10 +222,14 @@ def validation_contrastive(model, data_loader, step, device):
     model.train()
 
     best_acc, best_thresh = search_best_acc(gt_labels_list, prob_labels_list)
-    logger.info(f'Search ACC: {best_acc}, Search Thresh: {best_thresh}')
+    logger.info(f"Search ACC: {best_acc}, Search Thresh: {best_thresh}")
 
-    r_acc = accuracy_score(gt_labels_list[gt_labels_list == 0], prob_labels_list[gt_labels_list == 0] > 0.5)
-    f_acc = accuracy_score(gt_labels_list[gt_labels_list == 1], prob_labels_list[gt_labels_list == 1] > 0.5)
+    r_acc = accuracy_score(
+        gt_labels_list[gt_labels_list == 0], prob_labels_list[gt_labels_list == 0] > 0.5
+    )
+    f_acc = accuracy_score(
+        gt_labels_list[gt_labels_list == 1], prob_labels_list[gt_labels_list == 1] > 0.5
+    )
     raw_acc = accuracy_score(gt_labels_list, prob_labels_list > 0.5)
 
     return auc, best_acc, ap, raw_acc, r_acc, f_acc
@@ -240,7 +263,7 @@ def train(args):
         wandb.init(
             project=args.project,
             entity="FoMo",
-            name=args.run_name+ "/" + args.uid,
+            name=args.run_name + "/" + args.uid,
             config={
                 "architecture": args.model,
                 "clip_type": args.clip_type,
@@ -255,7 +278,8 @@ def train(args):
                 "train_dataset": cfg["train_dataset"],
                 "test_dataset": cfg["test_dataset"],
             },
-            settings=wandb.Settings(_service_wait=300, init_timeout=120))
+            settings=wandb.Settings(_service_wait=300, init_timeout=120),
+        )
 
     global test_best
     global test_best_close
@@ -272,8 +296,13 @@ def train(args):
                        jpeg_quality=args.jpeg_quality,
                        debug=args.debug)
     train_data_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=True, sampler=None)
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
+        pin_memory=True,
+        sampler=None,
+    )
     describe_dataloader(train_data_loader)
 
     # load validation data
@@ -282,18 +311,24 @@ def train(args):
                        jpeg_quality=args.jpeg_quality,
                        debug=args.debug)
     val_data_loader = DataLoader(
-        val_dataset, args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True, sampler=None)
+        val_dataset,
+        args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=True,
+        sampler=None,
+    )
     describe_dataloader(val_data_loader)
 
     # setting loss criterion
     if not args.label_smooth:
         args.criterion_ce = nn.CrossEntropyLoss().to(device)
     else:
-        args.criterion_ce = LabelSmoothingLoss(classes=args.num_classes, smoothing=args.smoothing)
+        args.criterion_ce = LabelSmoothingLoss(
+            classes=args.num_classes, smoothing=args.smoothing
+        )
     # args.criterion_ce = torch.nn.CrossEntropyLoss().cuda()
     # args.torchKMeans = torchKMeans(verbose=False, n_clusters=2, distance=CosineSimilarity)
-
 
     # if args.resume != '':
     #     if args.gpu is None:
@@ -312,7 +347,9 @@ def train(args):
     # optimizer = optim.AdamW(parameters, lr=args.lr)
 
     # setting scheduler
-    lr_schedule = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=4, min_lr=1e-7)
+    lr_schedule = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="max", factor=0.5, patience=4, min_lr=1e-7
+    )
     loss_meter = StatsMeter()
     auc_meter = StatsMeter()
 
@@ -321,10 +358,18 @@ def train(args):
     step = 0
     for epoch in range(args.epochs):
         # train one epoch
-        step = train_one_epoch(model, train_data_loader, val_data_loader, 
-                               optimizer, epoch,
-                               loss_meter, auc_meter, args, device,
-                               step)
+        step = train_one_epoch(
+            model,
+            train_data_loader,
+            val_data_loader,
+            optimizer,
+            epoch,
+            loss_meter,
+            auc_meter,
+            args,
+            device,
+            step,
+        )
         # scheduler step
         lr_schedule.step(auc_meter.avg)
 

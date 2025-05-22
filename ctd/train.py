@@ -81,6 +81,7 @@ def extend_cfg(cfg):
     cfg.TRAINER.COCOOP.PREC = "fp16"  # fp16, fp32, amp
 
     cfg.DATASET.SUBSAMPLE_CLASSES = "all"  # all, base or new
+    cfg.DATASET.NUM_SHOTS = 100000
 
 
 def setup_cfg(args):

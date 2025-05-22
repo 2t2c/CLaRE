@@ -48,9 +48,8 @@ class DF40(Dataset):
 
     def __init__(
         self,
-        config=None,
+        config,
         jpeg_quality=None,
-        gaussian_sigma=None,
         debug=False,
         mode="train",
     ):
@@ -79,21 +78,28 @@ class DF40(Dataset):
         self.label_list = []
         # Image settings
         self.jpeg_quality = jpeg_quality
-        self.gaussian_sigma = gaussian_sigma
 
         # Set the dataset dictionary based on the mode
         if self.mode == "train":
             dataset_list = config["train_dataset"]
+            print(f"Dataset list: {dataset_list}")
+
             # Training data should be collected together for training
             image_list, label_list = [], []
             for one_data in dataset_list:
                 tmp_image, tmp_label, tmp_name = (
                     self.collect_img_and_label_for_one_dataset(one_data)
                 )
+                print(f"TMP Image: {tmp_image}")
+                print(f"TMP Label: {tmp_label}")
+                print(f"TMP Name: {tmp_name}")
+
                 image_list.extend(tmp_image)
                 label_list.extend(tmp_label)
         elif self.mode == "test":
             one_data = config["test_dataset"]
+            print(f"Dataset list: {dataset_list}")
+
             # Test dataset should be evaluated separately. So collect only one dataset each time
             image_list, label_list, name_list = (
                 self.collect_img_and_label_for_one_dataset(one_data)
