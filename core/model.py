@@ -5,8 +5,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import types
-from .modules import (clip_forward, clip_encode_image, ChannelAlignLayer,
-                      MultiHeadMapAttention, ROIPooler)
+from .modules import (clip_resnet_forward, clip_vit_forward, clip_encode_image, 
+                      ChannelAlignLayer, MultiHeadMapAttention, ROIPooler)
 
 
 class CLIPModel(nn.Module):
@@ -46,16 +46,24 @@ class CLIPClassifierWMap(nn.Module):
         else:
             self.clip_model, self.preprocess = clip.load(name, device="cpu")
         self.text_input = clip.tokenize(["Real Photo", "Fake Photo"])
+        self.name = name
+        self.image_proj = nn.Linear(768, 1024) if 'ViT' in self.name else nn.Identity()
         # overriding the methods of clip
         # self.clip_model.visual.forward = clip_forward
         # self.clip_model.encode_image = clip_encode_image
         # bind custom forward properly
-        self.clip_model.visual.forward = types.MethodType(clip_forward, self.clip_model.visual)
+        # self.clip_model.visual.forward = types.MethodType(clip_forward, self.clip_model.visual)
+        self.clip_model.encode_image = types.MethodType(clip_encode_image, self.clip_model)
+        if self.name.__contains__('ViT'):
+            self.clip_model.visual.forward = types.MethodType(clip_vit_forward, self.clip_model.visual)
+            self.attn_pool = MultiHeadMapAttention(spacial_dim=16)
+        else:
+            self.clip_model.visual.forward = types.MethodType(clip_resnet_forward, self.clip_model.visual)
+            self.attn_pool = MultiHeadMapAttention(spacial_dim=14)
         self.clip_model.encode_image = types.MethodType(clip_encode_image, self.clip_model)
         # conv. + attention + alignment
         self.conv = nn.Conv2d(4, 8, kernel_size=(1, 1))  # for 8 heads
         self.conv_align = nn.Conv2d(4, 1024, kernel_size=(1, 1))
-        self.attn_pool = MultiHeadMapAttention()
         self.channel_align = ChannelAlignLayer(4, 128, 1024)
         # roi pooling
         self.roi_pooling = roi_pooling
@@ -70,10 +78,15 @@ class CLIPClassifierWMap(nn.Module):
         # image - (B,C,H,W) | loss_map - (B,4,32,32)
         # image_feats, block3_feats = self.clip_model.encode_image(self.clip_model, image)
         image_feats, block3_feats = self.clip_model.encode_image(image)
+        # project ViT image features from 768 -> 1024 if needed
+        image_feats = self.image_proj(image_feats)
 
-        # block3 - (B,1024,14,14)
-        aligned_loss_map = F.adaptive_avg_pool2d(loss_map, (14, 14))  # (B,4,14,14)
-        pooled_loss_map = self.conv(aligned_loss_map)  # (B,8,14,14)
+        # block3_feats - RN:50 (B,1024,14,14) | Vit: (B,1024,16,16)
+        if self.name.__contains__('ViT'):
+            aligned_loss_map = F.adaptive_avg_pool2d(loss_map, (16, 16))  # (B,4,16,16)
+        else:
+            aligned_loss_map = F.adaptive_avg_pool2d(loss_map, (14, 14))  # (B,4,14,14)
+        pooled_loss_map = self.conv(aligned_loss_map)  # (B,8,14/16,14/16)
         pooled_block3_feats = self.attn_pool(block3_feats, pooled_loss_map)  # (B,1024)
         channel_weighted_feats = self.channel_align(block3_feats, loss_map)  # (B,1024)
 

@@ -14,9 +14,12 @@ def clip_encode_image(self, image):
     return self.visual(image.type(self.dtype))
 
 
-def clip_forward(self, x):
+def clip_resnet_forward(self, x):
     """
-    Forward pass through the CLIP model.
+    Modified Forward pass through the CLIP ResNet model.
+    :returns:
+        - Global CLS-like embedding of shape (B, 1024)
+        - Spatial feature map from layer3 of shape (B, 1024, 14, 14)
     """
     def stem(x):
         x = self.relu1(self.bn1(self.conv1(x)))
@@ -34,6 +37,44 @@ def clip_forward(self, x):
     x = self.attnpool(x)
 
     return x, x_l3
+
+def clip_vit_forward(self, x: torch.Tensor):
+    """
+    Modified Forward pass through the CLIP ResNet model.
+    :returns:
+        - Global CLS token feature (B, 1024)
+        - Spatial patch features reshaped to (B, 1024, 14, 14) for map attention
+    """
+    x = self.conv1(x)  # shape = (B, C, H_patch, W_patch)
+    x = x.reshape(x.shape[0], x.shape[1], -1)  # (B, C, N)
+    x = x.permute(0, 2, 1)  # (B, N, C)
+
+    # CLS token
+    cls_token = self.class_embedding.to(x.dtype)
+    cls_tokens = cls_token.expand(x.shape[0], 1, -1)
+    x = torch.cat([cls_tokens, x], dim=1)  # (B, N+1, C)
+
+    x = x + self.positional_embedding.to(x.dtype)
+    x = self.ln_pre(x)
+
+    x = x.permute(1, 0, 2)  # NLD -> LND
+    x = self.transformer(x)
+    x = x.permute(1, 0, 2)  # LND -> NLD
+
+    cls_feats = x[:, 0, :]  # (B, C)
+    patch_tokens = x[:, 1:, :]  # (B, N, C)
+
+    # reshape patch tokens to 2D feature map (B, C, H, W)
+    num_patches = patch_tokens.shape[1]
+    h = w = int(num_patches ** 0.5)
+    assert h * w == num_patches, f"Number of patches ({num_patches}) must be a perfect square"
+    patch_map = patch_tokens.permute(0, 2, 1).reshape(x.shape[0], -1, h, w)  # (B, C, H, W)
+
+    cls_feats = self.ln_post(cls_feats)
+    if self.proj is not None:
+        cls_feats = cls_feats @ self.proj
+
+    return cls_feats, patch_map
 
 
 class ROIPooler(nn.Module):
@@ -239,11 +280,14 @@ class MultiHeadMapAttention(nn.Module):
     def __init__(self, d_in=1024, d_out=1024, d_k=64, d_v=64, h=8, dropout=.1, identity_map_reordering=False,
                  spacial_dim=14):
         super(MultiHeadMapAttention, self).__init__()
+        self.d_in = d_in
+        self.d_out = d_out
         self.identity_map_reordering = identity_map_reordering
-        self.attention = ScaledDotProductWithMapAttention(d_in=d_in, d_out=d_out, d_k=d_k, d_v=d_v, h=h)
+        self.attention = ScaledDotProductWithMapAttention(d_in=self.d_in, d_out=self.d_out, 
+                                                          d_k=d_k, d_v=d_v, h=h)
         self.dropout = nn.Dropout(p=dropout)
         self.layer_norm = nn.LayerNorm(d_out)
-        self.positional_embedding = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, d_in) / d_in ** 0.5)  # 197 * d_in
+        self.positional_embedding = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, self.d_in) / self.d_in ** 0.5)  # 197 * d_in
 
     def forward(self, feature_map, loss_map, attention_mask=None, attention_weights=None):
         # feature_map bs * 1024 * 14 * 14

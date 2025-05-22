@@ -97,7 +97,6 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         # training statistics
         if step % args.log_every == 0:
             lr = get_lr(optimizer)
-            elapsed = time.time() - start_time
             metrics = {
                 "train/epoch": epoch,
                 "train/loss": loss_meter.avg,
@@ -106,8 +105,8 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
             }
             if args.logging:
                 wandb.log(metrics, step=step)
-            rprint("Time Elapsed ():", str(timedelta(seconds=elapsed)))
-            display_metrics(metrics=metrics)
+            elasped = time.time() - start_time
+            display_metrics(metrics=metrics, elasped=elasped)
             loss_meter.reset()
 
         # validation statistics
@@ -142,9 +141,8 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
             }
             if args.logging:
                 wandb.log(val_metrics, step=step)
-            elapsed = time.time() - start_time
-            rprint("Time Elapsed:", str(timedelta(seconds=elapsed)))
-            display_metrics(metrics=val_metrics)
+            elasped = time.time() - start_time
+            display_metrics(metrics=val_metrics, elasped=elasped)
 
             model.train()  # switch back to training mode after validation
 

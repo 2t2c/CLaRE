@@ -23,7 +23,7 @@ logger = logging.getLogger("fomo_logger")
 logger.setLevel(logging.INFO)
 
 if not logger.hasHandlers():
-    handler = RichHandler()
+    handler = RichHandler(show_path=False)
     logger.addHandler(handler)
     logger.propagate = False
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     parser.add_argument('--log_every', type=int,
                         default=100, help='logging step')
     parser.add_argument('--logging', type=bool,
-                        default=True, help='online logging')
+                        default=False, help='online logging')
 
     # training/testing config args
     parser.add_argument('--mode', type=str,
@@ -75,7 +75,7 @@ if __name__ == '__main__':
                         choices=["cpu", "cuda", "mps"],
                         help="Device to run the model on: cpu | cuda | mps")
     parser.add_argument('--eval_every', type=int,
-                        default=500, help='Evaluation step')
+                        default=100, help='Evaluation step')
 
     # dataset args
     parser.add_argument("--df40_name", type=str, default=None,
@@ -91,7 +91,8 @@ if __name__ == '__main__':
                         default=True, help='Debugging on few samples')
 
     # model configs
-    parser.add_argument("--model", type=str, default='CLIP:RN50')
+    # parser.add_argument("--model", type=str, default='CLIP:RN50')
+    parser.add_argument("--model", type=str, default='CLIP:ViT-L/14')
     parser.add_argument("--clip_type", type=str, default='wmap')
     parser.add_argument("--roi_pooling", type=str, default=False)
 

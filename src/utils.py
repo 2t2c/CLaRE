@@ -12,6 +12,8 @@ import logging
 import cv2
 from albumentations import DualTransform, ImageOnlyTransform
 from albumentations.augmentations.crops.functional import crop
+from datetime import timedelta
+from rich import print as rprint
 from rich.table import Table
 from rich.console import Console
 import torch
@@ -226,7 +228,7 @@ def display_args(args, title="Arguments"):
     console = Console()
     console.print(table)
 
-def display_metrics(metrics: dict, title="Validation Metrics"):
+def display_metrics(metrics: dict, elasped, title="Validation Metrics"):
     """
     Nicely print metric dictionary using rich.
 
@@ -235,6 +237,7 @@ def display_metrics(metrics: dict, title="Validation Metrics"):
     :param:
         title: Optional table title
     """
+    rprint("Time Elasped:", str(timedelta(seconds=elasped)))
     table = Table(title=title)
     table.add_column("Metric", style="cyan", no_wrap=True)
     table.add_column("Value", style="magenta")
