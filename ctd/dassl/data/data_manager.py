@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from .dataset import CTD
+from .utils import describe_dataloader
 
 
 def build_data_loader(
@@ -10,7 +11,7 @@ def build_data_loader(
     is_train=True,
 ):
     mode = "train" if is_train else "test"
-    dataset = CTD(cfg, mode=mode)
+    dataset = CTD(cfg, mode=mode, debug=True)
     data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -30,6 +31,7 @@ class DataManager:
             batch_size=cfg.DATALOADER.TRAIN_X.BATCH_SIZE,
             is_train=True,
         )
+        describe_dataloader(train_loader)
 
         val_loader = build_data_loader(
             cfg,

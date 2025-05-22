@@ -1,6 +1,8 @@
 import argparse
+from pathlib import Path
 import torch
 
+from dassl.data.dataset import create_dataset_manifest
 from dassl.utils import setup_logger, set_random_seed, collect_env_info
 from dassl.config import get_cfg_default
 from dassl.engine import build_trainer
@@ -122,6 +124,12 @@ def main(args):
     print("Collecting env info ...")
     print("** System info **\n{}\n".format(collect_env_info()))
 
+    create_dataset_manifest(
+        Path(cfg["dataset_root"]),
+        Path(cfg["dataset_manifest"]),
+        subsets_to_include=["pixart", "vqgan", "style-gan-xl", "sit"],
+    )
+    return
     trainer = build_trainer(cfg)
 
     if args.eval_only:

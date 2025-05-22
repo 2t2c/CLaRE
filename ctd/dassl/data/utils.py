@@ -1,71 +1,14 @@
 import numpy as np
 from PIL import Image
-from io import BytesIO
+import torch
 import logging
-import cv2
-from albumentations import DualTransform
+from rich.table import Table
+from rich.console import Console
+from collections import Counter
+from io import BytesIO
 
 
 logger = logging.getLogger("fomo_logger")
-
-
-def isotropically_resize_image(
-    img, size, interpolation_down=cv2.INTER_AREA, interpolation_up=cv2.INTER_CUBIC
-):
-    h, w = img.shape[:2]
-    if max(w, h) == size:
-        return img
-    if w > h:
-        scale = size / w
-        h = h * scale
-        w = size
-    else:
-        scale = size / h
-        w = w * scale
-        h = size
-    interpolation = interpolation_up if scale > 1 else interpolation_down
-    resized = cv2.resize(img, (int(w), int(h)), interpolation=interpolation)
-    return resized
-
-
-class IsotropicResize(DualTransform):
-    def __init__(
-        self,
-        max_side,
-        interpolation_down=cv2.INTER_AREA,
-        interpolation_up=cv2.INTER_CUBIC,
-        always_apply=False,
-        p=1,
-    ):
-        super(IsotropicResize, self).__init__(always_apply, p)
-        self.max_side = max_side
-        self.interpolation_down = interpolation_down
-        self.interpolation_up = interpolation_up
-
-    def apply(
-        self,
-        img,
-        interpolation_down=cv2.INTER_AREA,
-        interpolation_up=cv2.INTER_CUBIC,
-        **params,
-    ):
-        return isotropically_resize_image(
-            img,
-            size=self.max_side,
-            interpolation_down=interpolation_down,
-            interpolation_up=interpolation_up,
-        )
-
-    def apply_to_mask(self, img, **params):
-        return self.apply(
-            img,
-            interpolation_down=cv2.INTER_NEAREST,
-            interpolation_up=cv2.INTER_NEAREST,
-            **params,
-        )
-
-    def get_transform_init_args_names(self):
-        return ("max_side", "interpolation_down", "interpolation_up")
 
 
 def png2jpg(img, quality):
@@ -82,3 +25,75 @@ def png2jpg(img, quality):
     out.close()
 
     return img
+
+
+def describe_dataloader(dataloader):
+    """
+    Method to print dataset statistics from a PyTorch DataLoader:
+    - Total number of samples
+    - Total number of batches
+    - Class distribution (if available)
+    - Sample data shape and dtype
+    """
+    console = Console()
+    dataset = dataloader.dataset
+    total_samples = len(dataset)
+    total_batches = len(dataloader)
+
+    table = Table(title="DataLoader Summary")
+
+    table.add_column("Property", style="cyan")
+    table.add_column("Value", style="magenta")
+    table.add_row("Total samples", str(total_samples))
+    table.add_row(
+        f"Total batches (batch_size={dataloader.batch_size})", str(total_batches)
+    )
+    table.add_row("Num Workers", str(dataloader.num_workers))
+
+    # class info
+    class_info_found = False
+    if hasattr(dataset, "classes"):
+        table.add_row("Classes", str(dataset.classes))
+        class_info_found = True
+    if hasattr(dataset, "class_to_idx"):
+        table.add_row("Class to index mapping", str(dataset.class_to_idx))
+        class_info_found = True
+    if hasattr(dataset, "targets"):
+        targets = dataset.targets
+        if isinstance(targets, list):
+            targets = torch.tensor(targets)
+        label_counts = Counter(targets.tolist())
+        table.add_row("Label counts", str(dict(label_counts)))
+        class_info_found = True
+    if not class_info_found:
+        table.add_row(
+            "Class/Label info", "No class/label info found in dataset attributes."
+        )
+
+    # sample data shape and dtype
+    try:
+        first_batch = next(iter(dataloader))
+        if isinstance(first_batch, (list, tuple)):
+            # Show shape of first input and sample label summary
+            shape_info = str(first_batch[0].shape)
+            label_info = str(first_batch[1])
+            table.add_row("Input sample shape", shape_info)
+            table.add_row("Label sample", label_info)
+        elif isinstance(first_batch, dict):
+            table.add_row("Sample keys", str(list(first_batch.keys())))
+            for key, value in first_batch.items():
+                if hasattr(value, "shape"):
+                    shape = tuple(value.shape)
+                else:
+                    shape = "N/A"
+                dtype = getattr(value, "dtype", type(value).__name__)
+                table.add_row(
+                    f"{key.capitalize()} shape & dtype",
+                    str(shape) + f", ({str(dtype)})",
+                )
+        else:
+            table.add_row("Sample", str(type(first_batch)))
+    except Exception as e:
+        table.add_row("Sample inspection error", str(e))
+
+    console.print(table)

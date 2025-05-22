@@ -1,27 +1,27 @@
-import time
-import numpy as np
-import os.path as osp
 import datetime
+import os.path as osp
+import time
 from collections import OrderedDict
+
+import numpy as np
 import torch
 import torch.nn as nn
-from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
-
 from dassl.data import DataManager
-from dassl.optim import build_optimizer, build_lr_scheduler
+from dassl.evaluation import build_evaluator
+from dassl.optim import build_lr_scheduler, build_optimizer
 from dassl.utils import (
-    MetricMeter,
     AverageMeter,
-    tolist_if_not,
+    MetricMeter,
     count_num_param,
     load_checkpoint,
-    save_checkpoint,
+    load_pretrained_weights,
     mkdir_if_missing,
     resume_from_checkpoint,
-    load_pretrained_weights,
+    save_checkpoint,
+    tolist_if_not,
 )
-from dassl.evaluation import build_evaluator
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 
 class TrainerBase:
@@ -290,14 +290,11 @@ class SimpleTrainer(TrainerBase):
         dm = DataManager(self.cfg)
 
         self.train_loader_x = dm.train_loader_x
-        self.train_loader_u = None
-        self.val_loader = dm.val_loader  # optional, can be None
+        self.val_loader = dm.val_loader
         self.test_loader = dm.test_loader
-
         self.num_classes = dm.num_classes
         self.num_source_domains = 0
-        self.lab2cname = {0: "fake", 1: "real"}  # dict {label: classname}
-
+        self.lab2cname = {1: "fake", 0: "real"}  # dict {label: classname}
         self.dm = dm
 
     def build_model(self):
