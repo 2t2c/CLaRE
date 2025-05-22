@@ -106,7 +106,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
             if args.logging:
                 wandb.log(metrics, step=step)
             elasped = time.time() - start_time
-            display_metrics(metrics=metrics, elasped=elasped)
+            display_metrics(metrics=metrics, elasped=elasped, title="Training Metrics")
             loss_meter.reset()
 
         # validation statistics

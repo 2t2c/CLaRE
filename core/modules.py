@@ -315,7 +315,9 @@ class MultiHeadMapAttention(nn.Module):
             out = self.dropout(out)
             out = self.layer_norm(queries + out)
         return out.squeeze()
-class ScaledDotProductWithMapAttention_modified(nn.Module):
+
+        
+class ScaledDotProductWithMapAttentionV2(nn.Module):
     '''
     Scaled dot-product attention
     '''
@@ -329,7 +331,7 @@ class ScaledDotProductWithMapAttention_modified(nn.Module):
         d_in=1024, d_out=1024, d_k=64, d_v=64, h=8, dropout=.1, identity_map_reordering=False,
                  spacial_dim=14
         '''
-        super(ScaledDotProductWithMapAttention_modified, self).__init__()
+        super(ScaledDotProductWithMapAttentionV2, self).__init__()
         self.d_in = d_in   # d_in=1024
         self.fc_q = nn.Linear(d_in, h * d_k) # 1024 --> 512
         self.fc_k = nn.Linear(d_in, h * d_k) # 1024 --> 512
@@ -391,7 +393,7 @@ class ScaledDotProductWithMapAttention_modified(nn.Module):
         # print(w_g.shape)
         # w_mn = torch.softmax(w_a + w_g, -1)  ## bs * 8 * r * r
         
-        w_mn = torch.softmax(att)
+        w_mn = torch.softmax(att, -1)
 
         att = self.dropout(w_mn)
 
@@ -402,7 +404,7 @@ class ScaledDotProductWithMapAttention_modified(nn.Module):
         return out
 
 
-class MultiHeadMapAttention_modified(nn.Module):
+class MultiHeadMapAttentionV2(nn.Module):
     """
     Formula: MultiHead(Q, K, V) = Concat(head_1, ..., head_h)W^O
     where head_i = Attention(QW_i^Q, KW_i^K, VW_i^V)
@@ -414,10 +416,10 @@ class MultiHeadMapAttention_modified(nn.Module):
     """
     def __init__(self, d_in=1024, d_out=1024, d_k=64, d_v=64, h=8, dropout=.1, identity_map_reordering=False,
                  spacial_dim=14):
-        super(MultiHeadMapAttention_modified, self).__init__()
+        super(MultiHeadMapAttentionV2, self).__init__()
         
         self.identity_map_reordering = identity_map_reordering
-        self.attention = ScaledDotProductWithMapAttention_modified(d_in=d_in, d_out=d_out, d_k=d_k, d_v=d_v, h=h)
+        self.attention = ScaledDotProductWithMapAttentionV2(d_in=d_in, d_out=d_out, d_k=d_k, d_v=d_v, h=h)
         self.dropout = nn.Dropout(p=dropout)
         self.layer_norm = nn.LayerNorm(d_out)
         # self.positional_embedding = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, d_in) / d_in ** 0.5)  # 197 * d_in

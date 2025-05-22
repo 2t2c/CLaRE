@@ -6,7 +6,8 @@ from torch import nn
 from torch.nn import functional as F
 import types
 from .modules import (clip_resnet_forward, clip_vit_forward, clip_encode_image, 
-                      ChannelAlignLayer, MultiHeadMapAttention, ROIPooler)
+                      ChannelAlignLayer, MultiHeadMapAttention, 
+                      MultiHeadMapAttentionV2, ROIPooler)
 
 
 class CLIPModel(nn.Module):
@@ -57,9 +58,11 @@ class CLIPClassifierWMap(nn.Module):
         if self.name.__contains__('ViT'):
             self.clip_model.visual.forward = types.MethodType(clip_vit_forward, self.clip_model.visual)
             self.attn_pool = MultiHeadMapAttention(spacial_dim=16)
+            # self.attn_pool = MultiHeadMapAttentionV2(spacial_dim=16)
         else:
             self.clip_model.visual.forward = types.MethodType(clip_resnet_forward, self.clip_model.visual)
             self.attn_pool = MultiHeadMapAttention(spacial_dim=14)
+            # self.attn_pool = MultiHeadMapAttentionV2(spacial_dim=16)
         self.clip_model.encode_image = types.MethodType(clip_encode_image, self.clip_model)
         # conv. + attention + alignment
         self.conv = nn.Conv2d(4, 8, kernel_size=(1, 1))  # for 8 heads

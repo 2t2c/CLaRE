@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
     # training hyperparameters
     parser.add_argument('--epochs', type=int, default=100, help='Total training epochs.')
-    parser.add_argument('--batch_size', type=int, default=16, help='The training batch size over all gpus.')
+    parser.add_argument('--batch_size', type=int, default=32, help='The training batch size over all gpus.')
     parser.add_argument("--out_dir", type=str, default='fomo_logdir')
     parser.add_argument("--num_classes", type=int, default=2, help='The class number of training dataset')
     parser.add_argument('--val_ratio', type=float, default=0.005)
