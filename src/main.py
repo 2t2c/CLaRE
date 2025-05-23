@@ -68,7 +68,7 @@ if __name__ == '__main__':
     # type of module
     parser.add_argument('--module', type=str,
                         choices=['lare', 'clipping', 'both'],
-                        default="lare")
+                        default="clipping")
 
     # wandb arguments
     parser.add_argument('--project', type=str,
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     # model configs
     # parser.add_argument("--model", type=str, default='CLIP:RN50')
     parser.add_argument("--model", type=str, default='CLIP:ViT-L/14')
-    parser.add_argument("--clip_type", type=str, default='wmap')
+    parser.add_argument("--clip_type", type=str, default='clipping')
     parser.add_argument("--roi_pooling", type=str, default=False)
 
     # training hyperparameters

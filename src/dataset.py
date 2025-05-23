@@ -218,8 +218,8 @@ class DF40(Dataset):
 
         # for debugging
         if self.debug: 
-            self.image_list = self.image_list[: min(10_000, len(self.image_list))]
-            self.label_list = self.label_list[: min(10_000, len(self.image_list))]
+            self.image_list = self.image_list[: min(1_000, len(self.image_list))]
+            self.label_list = self.label_list[: min(1_000, len(self.image_list))]
 
         # Create a dictionary containing the image and label lists
         self.data_dict = {
@@ -293,7 +293,7 @@ class DF40(Dataset):
 
         # Try to get the dataset information from the JSON file
         try:
-            with open(os.path.join(self.config['dataset_json_folder'], dataset_name + '.json'), 'r') as f:
+            with open(os.path.join(self.config['configs_folder'], dataset_name + '.json'), 'r') as f:
                 dataset_info = json.load(f)
         except Exception as e:
             print(e)
@@ -1011,7 +1011,7 @@ class CTD(DF40):
         }
 
 
-def describe_dataloader(dataloader):
+def describe_dataloader(dataloader, title="DataLoader Summary"):
     """
     Method to print dataset statistics from a PyTorch DataLoader:
     - Total number of samples
@@ -1024,7 +1024,7 @@ def describe_dataloader(dataloader):
     total_samples = len(dataset)
     total_batches = len(dataloader)
 
-    table = Table(title="DataLoader Summary")
+    table = Table(title=title)
 
     table.add_column("Property", style="cyan")
     table.add_column("Value", style="magenta")

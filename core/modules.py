@@ -612,6 +612,6 @@ class PromptLearner(nn.Module):
             prompts = torch.cat(prompts, dim=0)
 
         else:
-            raise ValueError
+            logger.error("Invalid 'class_token_position' defined!")
 
         return prompts

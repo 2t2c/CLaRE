@@ -77,18 +77,18 @@ def build_optimizer(model, optim_cfg, param_groups=None):
         optim_cfg (CfgNode): optimization config.
         param_groups: If provided, directly optimize param_groups and abandon model
     """
-    optim = optim_cfg.NAME
-    lr = optim_cfg.LR
-    weight_decay = optim_cfg.WEIGHT_DECAY
-    momentum = optim_cfg.MOMENTUM
-    sgd_dampening = optim_cfg.SGD_DAMPNING
-    sgd_nesterov = optim_cfg.SGD_NESTEROV
-    rmsprop_alpha = optim_cfg.RMSPROP_ALPHA
-    adam_beta1 = optim_cfg.ADAM_BETA1
-    adam_beta2 = optim_cfg.ADAM_BETA2
-    staged_lr = optim_cfg.STAGED_LR
-    new_layers = optim_cfg.NEW_LAYERS
-    base_lr_mult = optim_cfg.BASE_LR_MULT
+    optim = optim_cfg.name
+    lr = optim_cfg.lr
+    weight_decay = optim_cfg.weight_decay
+    momentum = optim_cfg.momentum
+    sgd_dampening = optim_cfg.sgd_dampning
+    sgd_nesterov = optim_cfg.sgd_nesterov
+    rmsprop_alpha = optim_cfg.rmsprop_alpha
+    adam_beta1 = optim_cfg.adam_beta1
+    adam_beta2 = optim_cfg.adam_beta2
+    staged_lr = optim_cfg.staged_lr
+    new_layers = optim_cfg.new_layers
+    base_lr_mult = optim_cfg.base_lr_mult
     if optim not in OPTIMIZERS:
         raise ValueError(
             f"optim must be one of {OPTIMIZERS}, but got {optim}"
@@ -528,7 +528,11 @@ def train(args):
             settings=wandb.Settings(_service_wait=300, init_timeout=120))
 
     # load model
-    model = get_model(name=args.model, type="clipping", cfg=cfg)
+    model = get_model(name=args.model, clip_type=args.clip_type, cfg=cfg)
+    # freeze all except prompt_learner
+    for name, param in model.named_parameters():
+        if "prompt_learner" not in name:
+            param.requires_grad_(False)
     device = get_device(args.device)
     model.to(device)
     display_model_summary(model, input_shape=(1, 3, 224, 224), device=device)
@@ -540,8 +544,8 @@ def train(args):
                         debug=args.debug)
     train_data_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
-        num_workers=cfg.dataset.num_workers, pin_memory=True, sampler=None)
-    describe_dataloader(train_data_loader)
+        num_workers=args.num_workers, pin_memory=True, sampler=None)
+    describe_dataloader(train_data_loader, title="Train DataLoader Summary")
 
     # load validation data
     val_dataset = CTD(config=cfg.dataset,
@@ -550,15 +554,15 @@ def train(args):
                       debug=args.debug)
     val_data_loader = DataLoader(
         val_dataset, args.batch_size, shuffle=False,
-        num_workers=cfg.dataset.num_workers, pin_memory=True, sampler=None)
-    describe_dataloader(val_data_loader)
+        num_workers=args.num_workers, pin_memory=True, sampler=None)
+    describe_dataloader(val_data_loader, title="Val DataLoader Summary")
 
     # setting optimizer, scaler, and scheduler
-    scaler = GradScaler() if cfg.TRAINER.COOP.PREC == "amp" else None
-    optimizer = Adam(model.prompt_learner.parameters(), lr=cfg.OPTIM.LR)
-    scheduler = build_lr_scheduler(optimizer, cfg.optim)
+    scaler = GradScaler() if cfg.clipping.coop.prec == "amp" else None
+    optimizer = build_optimizer(model.prompt_learner, cfg.clipping.optim)
+    scheduler = build_lr_scheduler(optimizer, cfg.clipping.optim)
 
-    if args.eval_only:
+    if args.mode == "test":
         logger.info(f"Evaluation Started! - Debugging: {args.debug}")
         # TODO: add model loading and evaluation function
     else:

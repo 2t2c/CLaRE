@@ -261,7 +261,7 @@ def train(args):
     global test_best_close
 
     # load model
-    model = get_model(name=args.model, type=args.clip_type, roi_pooling=args.roi_pooling)
+    model = get_model(name=args.model, clip_type=args.clip_type, roi_pooling=args.roi_pooling)
     device = get_device(args.device)
     model.to(device)
     display_model_summary(model, input_shape=(1, 3, 224, 224), device=device)

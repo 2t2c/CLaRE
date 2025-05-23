@@ -147,8 +147,10 @@ class CustomCLIP(nn.Module):
                                                                           device="cpu")
         else:
             self.clip_model, _ = clip.load(name, device="cpu")
+        if cfg.clipping.coop.prec in ["fp32", "amp"]:
+            self.clip_model.float()
         self.classes = ["real", "fake"]
-        self.prompt_learner = PromptLearner(cfg, self.classes, self.clip_model)
+        self.prompt_learner = PromptLearner(cfg.clipping, self.classes, self.clip_model)
         self.tokenized_prompts = self.prompt_learner.tokenized_prompts
         self.image_encoder = self.clip_model.visual
         self.text_encoder = TextEncoder(self.clip_model)
