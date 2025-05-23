@@ -218,8 +218,8 @@ class DF40(Dataset):
 
         # for debugging
         if self.debug: 
-            self.image_list = self.image_list[: min(1_000, len(self.image_list))]
-            self.label_list = self.label_list[: min(1_000, len(self.image_list))]
+            self.image_list = self.image_list[: min(5_000, len(self.image_list))]
+            self.label_list = self.label_list[: min(5_000, len(self.image_list))]
 
         # Create a dictionary containing the image and label lists
         self.data_dict = {

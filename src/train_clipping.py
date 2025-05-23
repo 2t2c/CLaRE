@@ -455,10 +455,10 @@ def validation_contrastive(model, data_loader, step, device):
             images, labels = images.to(device), labels.to(device)
             try:
                 with torch.no_grad():
-                    logits = model(images, labels)
+                    logits = model(images)
                     prob = torch.softmax(logits, dim=-1)  # bs * 2
             except:  # skip last batch
-                logger.info('Bad eval')
+                logger.warning('Bad evaluation batch!', exc_info=True)
                 raise
                 # continue
             gt_labels_list.append(labels)
@@ -580,7 +580,7 @@ def train(args):
                                    loss_meter, auc_meter, args, cfg,
                                    device, scaler, step)
             # scheduler step
-            scheduler.step(auc_meter.avg)
+            scheduler.step()
 
     if args.logging:
         # exit session

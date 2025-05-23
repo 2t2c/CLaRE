@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('--run_name', type=str,
                         default="debug", help='wandb run name')
     parser.add_argument('--log_every', type=int,
-                        default=100, help='logging step')
+                        default=50, help='logging step')
     parser.add_argument('--logging', type=bool,
                         default=False, help='online logging')
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
                         choices=["cpu", "cuda", "mps"],
                         help="Device to run the model on: cpu | cuda | mps")
     parser.add_argument('--eval_every', type=int,
-                        default=100, help='Evaluation step')
+                        default=50, help='Evaluation step')
 
     # dataset args
     parser.add_argument('--jpeg_quality', type=int, default=95,
