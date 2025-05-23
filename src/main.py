@@ -9,13 +9,13 @@ import time
 from utils import set_seed, display_args
 import logging
 from rich.logging import RichHandler
-
-os.environ["WANDB__SERVICE_WAIT"] = "300"
 sys.path.append(os.path.abspath(os.path.join("..")))
-from train import train
+from train_lare import train as train_lare
+from train_clipping import train as train_clipping
 # from test import test
 
 # logging
+os.environ["WANDB__SERVICE_WAIT"] = "300"
 # wandb.login()
 
 # create logger
@@ -43,12 +43,17 @@ def main(args):
         # pretty print args
         display_args(args)
         # start training
-        train(args)
-    elif mode == "test":
-        test(args)
-    elif mode == "both":
-        train(args)
-        test(args)
+        if args.module == "clipping":
+            train_clipping(args)
+        elif args.module == "lare":
+            train_lare(args)
+        else:
+            logger.error("Invalid module. Choose 'lare', 'clipping', or 'both'.")
+    # elif mode == "test": # TODO: implement test
+    #     test(args)
+    # elif mode == "both": # TODO: implement both
+    #     train(args)
+    #     test(args)
     else:
         logger.error("Invalid mode. Choose 'train', 'test', 'both'.")
 
@@ -56,6 +61,15 @@ def main(args):
 if __name__ == '__main__':
     # argparse
     parser = argparse.ArgumentParser()
+    # global config file for training/testing
+    parser.add_argument('--config', type=str,
+                        default="./configs/config.yaml",
+                        help="Data and Model config")
+    # type of module
+    parser.add_argument('--module', type=str,
+                        choices=['lare', 'clipping', 'both'],
+                        default="lare")
+
     # wandb arguments
     parser.add_argument('--project', type=str,
                         default="local", help='wandb project name')
@@ -78,15 +92,10 @@ if __name__ == '__main__':
                         default=100, help='Evaluation step')
 
     # dataset args
-    parser.add_argument("--df40_name", type=str, default=None,
-                        help="DF40 dataset name")
-    parser.add_argument('--config', type=str,
-                        default="config.yaml",
-                        help="DF40 mode config")
     parser.add_argument('--jpeg_quality', type=int, default=95,
-                        help="100, 90, 80, ... 30. Used to test robustness of our model. Not apply if None")
+                        help="100, 90, 80, ... 30. Used to test robustness of our model. Does not apply if None")
     parser.add_argument('--gaussian_sigma', type=int, default=None,
-                        help="0,1,2,3,4.     Used to test robustness of our model. Not apply if None")
+                        help="0,1,2,3,4. Used to test robustness of the model. Does not apply if None")
     parser.add_argument('--debug', type=bool,
                         default=True, help='Debugging on few samples')
 
@@ -107,7 +116,7 @@ if __name__ == '__main__':
     parser.add_argument("--resume", type=str, default='')
     parser.add_argument("--label_smooth", action='store_true', default=False)
     parser.add_argument('--smoothing', type=float, default=0.1)
-    parser.add_argument('--workers', default=4, type=int, metavar='N',
+    parser.add_argument('--num_workers', default=4, type=int, metavar='N',
                         help='number of data loading workers (default: 4)')
     args = parser.parse_args()
 

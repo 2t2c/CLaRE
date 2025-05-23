@@ -18,6 +18,8 @@ from rich.table import Table
 from rich.console import Console
 import torch
 from torchinfo import summary
+from yacs.config import CfgNode as CN
+import yaml
 
 # fetch logger
 logger = logging.getLogger("fomo_logger")
@@ -47,6 +49,23 @@ def get_device(type):
     logger.info(f"Using device: {device}")
 
     return device
+
+
+def load_config(config):
+    """
+    Convert a dictionary to a CfgNode object.
+    :param:
+        config: yaml file
+    :return:
+        cfg: CfgNode object
+    """
+    if isinstance(config, dict):
+        node = CN()
+        for k, v in config.items():
+            node[k] = load_config(v)
+        return node
+
+    return config
 
 def isotropically_resize_image(img, size, interpolation_down=cv2.INTER_AREA, interpolation_up=cv2.INTER_CUBIC):
     h, w = img.shape[:2]
@@ -274,13 +293,17 @@ def display_model_summary(model, input_shape=None, title="Model Summary", device
     table.add_row("Total Parameters", f"{total_params:,}")
     table.add_row("Trainable Parameters", f"{trainable_params:,}")
     table.add_row("Trainable (Million)", f"{trainable_params / (1024 ** 2):.2f} Million")
-    arch = str(summary(model.clip_model, depth=1, verbose=0))
+    if hasattr(model, "clip_model"):
+        arch = str(summary(model.clip_model, depth=1, verbose=0))
+    else:
+        arch = str(summary(model, depth=1, verbose=0))
     table.add_row("Summary", arch)
 
     if input_shape is not None:
-        table.add_row(f"Input Shape", str(input_shape))
-        visual_arch = str(summary(model.clip_model.visual, input_size=input_shape, depth=1, verbose=0))
-        table.add_row("CLIP.Visual", visual_arch)
+        if hasattr(model, "clip_model"):
+            table.add_row(f"Input Shape", str(input_shape))
+            visual_arch = str(summary(model.clip_model.visual, input_size=input_shape, depth=1, verbose=0))
+            table.add_row("CLIP.Visual", visual_arch)
 
     console = Console()
     console.print(table)

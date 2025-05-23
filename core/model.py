@@ -4,14 +4,22 @@ import clip
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torch.cuda.amp import autocast, GradScaler
+from torch.optim import Adam
+from torch.optim.lr_scheduler import StepLR
+from clip import clip
+
 import types
+# LaRE Modules
 from .modules import (clip_resnet_forward, clip_vit_forward, clip_encode_image, 
                       ChannelAlignLayer, MultiHeadMapAttention, 
                       MultiHeadMapAttentionV2, ROIPooler)
+# CLIPping modules
+from .modules import (PromptLearner, TextEncoder)
 
-
+### LaRE Models ###
 class CLIPModel(nn.Module):
-    def __init__(self, name, pretrained=None, num_class=2):
+    def __init__(self, name, pretrained=None):
         super(CLIPModel, self).__init__()
         self.name = name
         if pretrained:
@@ -125,16 +133,39 @@ class CLIPClassifierWMap(nn.Module):
 
         return logits
 
+### CLIPping Models ###
+class CustomCLIP(nn.Module):
+    """
+    CLLPing model that uses prompt learning.
+    """
+    def __init__(self, cfg, name, pretrained=None):
+        super().__init__()
+        self.name = name
+        if pretrained:
+            self.clip_model, _, _ = open_clip.create_model_and_transforms(name,
+                                                                          pretrained=pretrained,
+                                                                          device="cpu")
+        else:
+            self.clip_model, _ = clip.load(name, device="cpu")
+        self.classes = ["real", "fake"]
+        self.prompt_learner = PromptLearner(cfg, self.classes, self.clip_model)
+        self.tokenized_prompts = self.prompt_learner.tokenized_prompts
+        self.image_encoder = self.clip_model.visual
+        self.text_encoder = TextEncoder(self.clip_model)
+        self.logit_scale = self.clip_model.logit_scale
+        self.dtype = self.clip_model.dtype
 
-if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    def forward(self, image):
+        image_features = self.image_encoder(image.type(self.dtype))
 
-    model = CLIPModel().cuda()
-    model.eval()
+        prompts = self.prompt_learner()
+        tokenized_prompts = self.tokenized_prompts
+        text_features = self.text_encoder(prompts, tokenized_prompts)
 
-    params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print('Params: %.2f' % (params / (1024 ** 2)))
+        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
-    x = torch.zeros([4, 3, 448, 448]).cuda()
-    _, logits = model(x)
-    print(logits.shape)
+        logit_scale = self.logit_scale.exp()
+        logits = logit_scale * image_features @ text_features.t()
+
+        return logits

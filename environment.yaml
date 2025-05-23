@@ -30,3 +30,4 @@ dependencies:
       - rich==14.0.0
       - torchsummary==1.5.1
       - torchinfo==1.8.0
+      - yacs==0.1.8

@@ -912,6 +912,105 @@ class LARE(DF40):
         }
 
 
+class CTD(DF40):
+    def __init__(self, config, mode,
+                 img_size=224, jpeg_quality=None,
+                 gaussian_sigma=None, debug=False):
+        # initialize DF40 first (inherits data loading, image_list, label_list, etc.)
+        super().__init__(config, jpeg_quality=jpeg_quality,
+                        gaussian_sigma=gaussian_sigma, debug=debug,
+                        mode=mode)
+        self.img_size = img_size
+        self.train_list = []
+        self.anchor = False
+        self.transform = A.Compose([
+            A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
+            A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
+            A.OneOf([
+                A.GaussianBlur(blur_limit=(3, 7), p=1.0),
+                A.GaussNoise(p=1.0),
+            ], p=0.5),
+            A.RandomRotate90(p=0.33),
+            # A.Flip(p=0.33),
+        ], p=1.0)
+
+    def __len__(self):
+        assert len(self.image_list) == len(self.label_list), 'Number of images and labels are not equal'
+        return len(self.image_list)
+
+    def __getitem__(self, index, no_norm=False):
+        # Get the image paths and label
+        image_paths = self.data_dict['image'][index]
+        label = self.data_dict['label'][index]
+
+        if not isinstance(image_paths, list):
+            # for the image-level IO, only one frame is used
+            image_paths = [image_paths]
+
+        image_tensors = []
+        landmark_tensors = []
+        mask_tensors = []
+        loss_map_tensors = []
+        augmentation_seed = None
+
+        for image_path in image_paths:
+            # Initialize a new seed for data augmentation at the start of each video
+            if self.video_level and image_path == image_paths[0]:
+                augmentation_seed = random.randint(0, 2 ** 32 - 1)
+
+            # Load the image
+            try:
+                # replace the hard-coded paths from the config
+                image_path = image_path.replace("deepfakes_detection_datasets/FaceForensics++",
+                                                f"{DATASET_DIR}/face_forensics/FaceForensics++")
+                image_path = image_path.replace("deepfakes_detection_datasets/Celeb-DF-v2",
+                                                f"{DATASET_DIR}/celeb_df/Celeb-DF-v2")
+                image_path = image_path.replace("deepfakes_detection_datasets/DF40_train",
+                                                f"{DATASET_DIR}/df40/{self.mode}")
+                image_path = image_path.replace("deepfakes_detection_datasets/DF40",
+                                                f"{DATASET_DIR}/df40/{self.mode}")
+                image = self.load_rgb(image_path)
+            except Exception as e:
+                # Skip this image and return the first one
+                logger.warning(f"Error loading image at index {index, image_path}: {e}")
+                return self.__getitem__(0)
+
+            # Convert to numpy array for data augmentation
+            image = np.array(image)
+
+            # Do Data Augmentation
+            if self.mode == 'train' and self.config['use_data_augmentation']:
+                image_trans, _, _ = self.data_aug(image, augmentation_seed)
+            else:
+                image_trans = deepcopy(image)
+
+            # To tensor and normalize
+            if not no_norm:
+                image_trans = self.normalize(self.to_tensor(image_trans))
+
+            image_tensors.append(image_trans)
+
+        if self.video_level:
+            # Stack image tensors along a new dimension (time)
+            image_tensors = torch.stack(image_tensors, dim=0)
+        else:
+            # Get the first image tensor
+            image_tensors = image_tensors[0]
+
+        return image_tensors, label
+
+
+    @staticmethod
+    def collate_fn(batch):
+        images, labels = zip(*batch)
+        images = torch.stack(images, dim=0)
+        labels = torch.LongTensor(labels)
+        return {
+            'image': images,
+            'label': labels,
+        }
+
+
 def describe_dataloader(dataloader):
     """
     Method to print dataset statistics from a PyTorch DataLoader:

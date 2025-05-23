@@ -1,5 +1,5 @@
 """
-Script to train the architecture pipeline.
+Script to train the LaRE architecture pipeline.
 """
 
 import os
@@ -25,7 +25,7 @@ from torch.utils.data import DataLoader, Dataset
 from rich import print as rprint
 import wandb
 from loss import LabelSmoothingLoss
-from utils import set_seed, get_device, display_metrics, display_model_summary
+from utils import set_seed, get_device, display_metrics, display_model_summary, load_config
 from dataset import describe_dataloader, LARE
 import logging
 
@@ -157,8 +157,6 @@ def validation_contrastive(model, data_loader, step, device):
     model.eval()
 
     gt_labels_list, pred_labels_list, prob_labels_list = [], [], []
-    gt_labels_list = []
-    pred_scores = []
     pbar = tqdm(data_loader, desc=f"Step {step}", unit="batch")
 
     with torch.no_grad():
@@ -232,8 +230,10 @@ def search_best_acc(gt_labels, pred_probs):
 
 def train(args):
     # load the config file
-    with open("./configs/" + args.config, 'r') as f:
-        config = yaml.safe_load(f)
+    with open(args.config, 'r') as f:
+        config_file = yaml.safe_load(f)
+    # convert to yacs
+    cfg = load_config(config_file)
 
     # setup wandb
     if args.logging:
@@ -252,8 +252,8 @@ def train(args):
                 "eval_every": args.eval_every,
                 "log_every": args.log_every,
                 "epochs": args.epochs,
-                "train_dataset": config["train_dataset"],
-                "test_dataset": config["test_dataset"],
+                "train_dataset": cfg["train_dataset"],
+                "test_dataset": cfg["test_dataset"],
             },
             settings=wandb.Settings(_service_wait=300, init_timeout=120))
 
@@ -267,8 +267,8 @@ def train(args):
     display_model_summary(model, input_shape=(1, 3, 224, 224), device=device)
 
     # load training data
-    train_dataset = LARE(config=config, 
-                       mode=args.mode, 
+    train_dataset = LARE(config=cfg,
+                       mode="train",
                        jpeg_quality=args.jpeg_quality,
                        debug=args.debug)
     train_data_loader = DataLoader(
@@ -277,7 +277,7 @@ def train(args):
     describe_dataloader(train_data_loader)
 
     # load validation data
-    val_dataset = LARE(config=config, 
+    val_dataset = LARE(config=cfg,
                        mode="test", 
                        jpeg_quality=args.jpeg_quality,
                        debug=args.debug)
