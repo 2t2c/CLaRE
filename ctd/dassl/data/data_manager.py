@@ -11,7 +11,12 @@ def build_data_loader(
     is_train=True,
 ):
     mode = "train" if is_train else "test"
-    dataset = CTD(cfg, mode=mode, debug=True)
+
+    if is_train:
+        dataset = CTD(cfg, mode=mode, debug=True)
+    else:
+        dataset = CTD(cfg, mode=mode, debug=True, test_subset="whichfaceisreal")
+
     data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -50,7 +55,7 @@ class DataManager:
 
         # Dataset and data-loaders
         self.train_loader_x = train_loader
-        self.val_loader = val_loader
+        self.val_loader = None
         self.test_loader = test_loader
 
     @property

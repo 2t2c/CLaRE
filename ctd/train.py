@@ -1,14 +1,13 @@
 import argparse
 from pathlib import Path
+
 import torch
-
-from dassl.data.dataset import create_dataset_manifest
-from dassl.utils import setup_logger, set_random_seed, collect_env_info
 from dassl.config import get_cfg_default
+from dassl.data.utils import create_dataset_manifest
 from dassl.engine import build_trainer
+from dassl.utils import collect_env_info, set_random_seed, setup_logger
 
-import trainers.coop
-import trainers.cocoop
+from trainers import cocoop, coop
 
 
 def print_args(args, cfg):
@@ -124,12 +123,21 @@ def main(args):
     print("Collecting env info ...")
     print("** System info **\n{}\n".format(collect_env_info()))
 
-    create_dataset_manifest(
-        Path(cfg["dataset_root"]),
-        Path(cfg["dataset_manifest"]),
-        subsets_to_include=["pixart", "vqgan", "style-gan-xl", "sit"],
-    )
-    return
+    subsets_to_include = {
+        "train": [
+            "vqgan",
+            "style-gan-xl",
+            "sit",
+            "face-forensics",
+        ],
+        "test": ["sit-cdf", "whichfaceisreal"],
+    }
+
+    # create_dataset_manifest(
+    #     Path(cfg["dataset_root"]),
+    #     Path(cfg["dataset_manifest"]),
+    #     subsets_to_include=subsets_to_include,
+    # )
     trainer = build_trainer(cfg)
 
     if args.eval_only:

@@ -1,5 +1,3 @@
-import json
-import logging
 import os
 import random
 from pathlib import Path
@@ -13,78 +11,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils.data import Dataset
 
-from .utils import png2jpg
-
-LOGGER = logging.getLogger("fomo_logger")
-
-
-def get_image_paths(path: Path, images_per_video: Optional[int]) -> list[str]:
-    """Recursively collects paths to all image files in a directory and its
-    subdirectories.
-
-    Parameters:
-        path: The root directory to search for images.
-
-    Returns:
-        List of image file paths.
-    """
-    extensions = {".jpg", ".jpeg", ".png"}
-
-    def is_image(p: Path) -> bool:
-        return p.is_file() and p.suffix.lower() in extensions
-
-    return [str(p.relative_to(path)) for p in path.rglob("*") if is_image(p)]
-
-
-def create_dataset_manifest(
-    dataset_root: Path,
-    manifest_path: Path,
-    images_per_video: Optional[int] = None,
-    subsets_to_include: Optional[list[str]] = None,
-):
-    data = {"root": str(dataset_root.absolute())}
-    for split in ["train", "test", "val"]:
-        split_path = dataset_root / split
-        data[split] = {}
-
-        if not split_path.exists():
-            msg = (
-                f'Could not find a directory for split "{split}" at {str(split_path)}!'
-            )
-            LOGGER.warning(msg)
-            continue
-
-        for classname in ["fake", "real"]:
-            data[split][classname] = {}
-            path = split_path / classname
-
-            if not path.exists():
-                continue
-
-            def should_include_subset(subset: Path) -> bool:
-                if not subset.is_dir():
-                    return False
-                if subsets_to_include is None:
-                    return True
-                return subset.name in subsets_to_include
-
-            subsets = [p for p in path.iterdir() if should_include_subset(p)]
-            for subset in subsets:
-                LOGGER.info(f'Loading subset "{subset}"')
-                image_paths = get_image_paths(subset, images_per_video)
-                data[split][classname][subset.name] = image_paths
-
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    LOGGER.info("Writing to file...")
-    with manifest_path.open("w") as f:
-        json.dump(data, f, indent=2)
-
-    LOGGER.info(f'Create dataset manifest at "{str(manifest_path)}"')
-
-
-def load_dataset_manifest(path: Path) -> dict[str, dict]:
-    with path.open("r") as f:
-        return json.load(f)
+from .utils import LOGGER, png_to_jpg, load_dataset_manifest
 
 
 class DF40(Dataset):
@@ -94,6 +21,7 @@ class DF40(Dataset):
         jpeg_quality: Optional[int] = None,
         debug: bool = False,
         mode: str = "train",
+        test_subset=None,
     ):
         """Initializes the dataset object.
 
@@ -103,13 +31,15 @@ class DF40(Dataset):
         """
         self.mode = mode
         self.debug = debug
+        self.config = config
         self.frame_num = config["frame_num"][mode]
         self.clip_size = config["clip_size"]
         self.jpeg_quality = jpeg_quality
-        self.classname_to_label = config["classname_to_label"]
+        self.classname_to_label = config["class_to_label"]
+        self.image_resolution = config["resolution"]
         self.transform = None
-
-        manifest_path = config["dataset_manifest"]
+        self.test_subset = test_subset
+        manifest_path = Path(config["dataset_manifest"])
         dataset_manifest = load_dataset_manifest(manifest_path)
         self.image_paths, self.labels = self.load_dataset(dataset_manifest, mode)
 
@@ -117,10 +47,27 @@ class DF40(Dataset):
         assert self.image_paths and self.labels, msg
 
         if self.debug:
-            self.image_paths = self.image_paths[: min(1000, len(self.image_paths))]
-            self.labels = self.labels[: min(1000, len(self.image_paths))]
+            self.image_paths = self.image_paths[: min(10_000, len(self.image_paths))]
+            self.labels = self.labels[: min(10_000, len(self.image_paths))]
 
     def load_dataset(self, manifest: dict, mode: str) -> tuple[list[str], list[int]]:
+        if mode == "train":
+            image_paths, labels = self.load_train_dataset(manifest, mode)
+        elif mode == "test":
+            image_paths, labels = self.load_test_dataset(
+                manifest, mode, self.test_subset
+            )
+        else:
+            raise ValueError(f"Unsupported mode: {mode}")
+
+        combined = list(zip(image_paths, labels))
+        random.shuffle(combined)
+        image_paths, labels = zip(*combined)
+        return list(image_paths), list(labels)
+
+    def load_train_dataset(
+        self, manifest: dict, mode: str
+    ) -> tuple[tuple[str], tuple[int]]:
         """Collects image and label lists.
 
         Args:
@@ -130,20 +77,73 @@ class DF40(Dataset):
         Returns:
             Tuple of (list of image paths, list of labels).
         """
-        image_paths = []
-        labels = []
 
+        LOGGER.info("Loading dataset...")
         dataset_root = Path(manifest["root"])
+        real_img_paths = []
+        fake_img_paths = []
         for classname, subsets in manifest[mode].items():
-            label = self.classname_to_label[classname]
+            image_paths = real_img_paths if classname == "real" else fake_img_paths
 
             for subset, rel_image_paths in subsets.items():
                 # Build full image paths
-                path_to_prepend = Path(dataset_root) / classname / subset
+                path_to_prepend = Path(dataset_root) / mode / classname / subset
                 full_paths = [str(path_to_prepend / img) for img in rel_image_paths]
                 image_paths.extend(full_paths)
-                labels.extend([label] * len(full_paths))
 
+        image_paths, labels = self.balance_dataset(real_img_paths, fake_img_paths)
+        return image_paths, labels
+
+    def load_test_dataset(
+        self, manifest: dict, mode: str, subset: str
+    ) -> tuple[list[str], list[int]]:
+        """Collects image and label lists.
+
+        Args:
+            manifest: Dataset manifest dictionary.
+            mode: Dataset split to load ('train', 'test', 'val').
+
+        Returns:
+            Tuple of (list of image paths, list of labels).
+        """
+        LOGGER.info("Loading dataset...")
+        image_paths, labels = [], []
+
+        fake_label = self.classname_to_label["fake"]
+        real_label = self.classname_to_label["real"]
+        dataset_root = Path(manifest["root"])
+        subset_prefix = dataset_root / mode / "fake" / subset
+
+        fake_imgs = manifest[mode][subset]["fake"]
+        fake_prefix = subset_prefix / "fake"
+        fake_paths = [str(fake_prefix / img) for img in fake_imgs]
+        fake_labels = [fake_label] * len(fake_paths)
+
+        real_imgs = manifest[mode][subset]["real"]
+        real_prefix = subset_prefix / "real"
+        real_paths = [str(real_prefix / img) for img in real_imgs]
+        real_labels = [real_label] * len(real_paths)
+
+        image_paths.extend(fake_paths + real_paths)
+        labels.extend(fake_labels + real_labels)
+
+        return image_paths, labels
+
+    def balance_dataset(
+        self, real_image_paths: list[str], fake_image_paths: list[str]
+    ) -> tuple[list[str], list[int]]:
+        repeat_factor = len(fake_image_paths) // len(real_image_paths)
+
+        balanced_real_paths = real_image_paths * repeat_factor
+        remaining = len(fake_image_paths) - len(balanced_real_paths)
+        balanced_real_paths += random.choices(real_image_paths, k=remaining)
+
+        image_paths = balanced_real_paths + fake_image_paths
+        real_label = self.classname_to_label["real"]
+        fake_label = self.classname_to_label["fake"]
+        real_labels = [real_label] * len(balanced_real_paths)
+        fake_labels = [fake_label] * len(fake_image_paths)
+        labels = real_labels + fake_labels
         return image_paths, labels
 
     def load_image(self, image_path: str):
@@ -153,7 +153,7 @@ class DF40(Dataset):
 
         Returns the image as a PIL Image.
         """
-        size = self.config["resolution"]
+        size = self.image_resolution
         assert os.path.exists(image_path), f"{image_path} does not exist"
 
         img = cv2.imread(image_path)
@@ -167,7 +167,7 @@ class DF40(Dataset):
 
         if self.jpeg_quality is not None and image_path.endswith(".png"):
             img = Image.fromarray(img)
-            img = png2jpg(img, self.jpeg_quality)
+            img = png_to_jpg(img, self.jpeg_quality)
 
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
@@ -226,8 +226,8 @@ class DF40(Dataset):
         labels = torch.LongTensor(labels)
 
         return {
-            "images": images,
-            "labels": labels,
+            "image": images,
+            "label": labels,
         }
 
     def __getitem__(self, index, normalize: bool = True):
@@ -261,12 +261,14 @@ class CTD(DF40):
         img_size=224,
         jpeg_quality=None,
         debug=False,
+        test_subset=None,
     ):
         super().__init__(
             config,
             jpeg_quality=jpeg_quality,
             debug=debug,
             mode=mode,
+            test_subset=test_subset,
         )
         self.transform = A.Compose(
             [
