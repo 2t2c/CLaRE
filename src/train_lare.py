@@ -25,8 +25,9 @@ from torch.utils.data import DataLoader, Dataset
 from rich import print as rprint
 import wandb
 from loss import LabelSmoothingLoss
-from utils import set_seed, get_device, display_metrics, display_model_summary, load_config
+from utils import set_seed, get_device, display_metrics, display_model_summary, load_config, display_args
 from dataset import describe_dataloader, LARE
+from yacs.config import CfgNode as CN
 import logging
 
 # fetch logger
@@ -112,7 +113,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         # validation statistics
         if step % args.eval_every == 0:
             # save directly after training to avoid errors and wasted training
-            torch.save(model.state_dict(), os.path.join(args.out_dir, 'latest.pt'))
+            torch.save(model.state_dict(), os.path.join(args.log_dir, 'latest.pt'))
             val_auc, val_acc, val_ap, val_raw_acc, val_r_acc, val_f_acc = validation_contrastive(model, val_data_loader,
                                                                                                  step, device)
             if val_acc > best_val:
@@ -125,7 +126,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
                     "best_step": best_step
                 }
                 name = "best.pth"
-                torch.save(ckpt, os.path.join(args.out_dir, name))
+                torch.save(ckpt, os.path.join(args.log_dir, name))
                 logger.info(f'Epoch {epoch}, Step {step}: New best val accuracy, model saved.')
                 auc_meter.update(best_val, images.shape[0])
 
@@ -234,6 +235,11 @@ def train(args):
         config_file = yaml.safe_load(f)
     # convert to yacs
     cfg = load_config(config_file)
+    # add args inside cfg as CfgNode
+    cfg.args = CN(vars(args))
+
+    # pretty print args
+    display_args(cfg.clone(), title="Config Arguments")
 
     # setup wandb
     if args.logging:
@@ -245,7 +251,7 @@ def train(args):
                 "architecture": args.model,
                 "clip_type": args.clip_type,
                 "batch_size": args.batch_size,
-                "out_dir": args.out_dir,
+                "log_dir": args.log_dir,
                 "seed": args.seed,
                 "mode": args.mode,
                 "device": args.device,

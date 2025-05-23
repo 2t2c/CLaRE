@@ -36,12 +36,10 @@ def main(args):
     if mode == "train":
         # create directory if not exists
         uid = str(int(time.time()))
-        out_dir = os.path.join(os.path.expanduser("~"), args.out_dir, args.run_name, uid)
-        os.makedirs(out_dir, exist_ok=True)
+        log_dir = os.path.join(os.path.expanduser("~"), args.log_dir, args.module, args.run_name, uid)
+        os.makedirs(log_dir, exist_ok=True)
         args.uid = uid
-        args.out_dir = out_dir
-        # pretty print args
-        display_args(args)
+        args.log_dir = log_dir
         # start training
         if args.module == "clipping":
             train_clipping(args)
@@ -108,7 +106,7 @@ if __name__ == '__main__':
     # training hyperparameters
     parser.add_argument('--epochs', type=int, default=100, help='Total training epochs.')
     parser.add_argument('--batch_size', type=int, default=32, help='The training batch size over all gpus.')
-    parser.add_argument("--out_dir", type=str, default='fomo_logdir')
+    parser.add_argument("--log_dir", type=str, default='fomo_logdir')
     parser.add_argument("--num_classes", type=int, default=2, help='The class number of training dataset')
     parser.add_argument('--val_ratio', type=float, default=0.005)
     parser.add_argument('--lr', type=float, default=1e-4, help='The initial learning rate.')

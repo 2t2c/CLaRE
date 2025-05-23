@@ -30,8 +30,9 @@ from torch.optim.lr_scheduler import StepLR, _LRScheduler
 from rich import print as rprint
 import wandb
 from loss import LabelSmoothingLoss
-from utils import set_seed, get_device, display_metrics, display_model_summary, load_config
+from utils import set_seed, get_device, display_metrics, display_model_summary, load_config, display_args
 from dataset import describe_dataloader, CTD
+from yacs.config import CfgNode as CN
 import logging
 
 SCHEDULERS = ["single_step", "multi_step", "cosine"]
@@ -387,11 +388,11 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         # validation statistics
         if step % args.eval_every == 0:
             # save directly after training to avoid errors and wasted training
-            torch.save(model.state_dict(), os.path.join(args.out_dir, 'latest.pt'))
+            torch.save(model.state_dict(), os.path.join(args.log_dir, 'latest.pt'))
             val_auc, val_acc, val_ap, val_raw_acc, val_r_acc, val_f_acc = validation_contrastive(model, val_data_loader,
                                                                                                  step, device)
-            if val_acc > best_val:
-                best_val = val_acc
+            if val_auc > best_val:
+                best_val = val_auc
                 best_step = step
                 ckpt = {
                     "state_dict": model.state_dict(),
@@ -400,7 +401,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
                     "best_step": best_step
                 }
                 name = "best.pth"
-                torch.save(ckpt, os.path.join(args.out_dir, name))
+                torch.save(ckpt, os.path.join(args.log_dir, name))
                 logger.info(f'Epoch {epoch}, Step {step}: New best val accuracy, model saved.')
 
             # log metrics to wandb
@@ -412,6 +413,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
                 "val/raw_accuracy": val_raw_acc,
                 "val/real_accuracy": val_r_acc,
                 "val/fake_accuracy": val_f_acc,
+                "val/step": step,
             }
             if args.logging:
                 wandb.log(val_metrics, step=step)
@@ -504,6 +506,13 @@ def train(args):
         config_file = yaml.safe_load(f)
     # convert to yacs
     cfg = load_config(config_file)
+    # add args inside cfg as CfgNode
+    cfg.args = CN(vars(args))
+    # dump the config
+    with open(f"{cfg.log_dir}config.yaml", "w") as f:
+        f.write(cfg.dump())
+    # pretty print args
+    display_args(cfg.clone(), title="Config Arguments")
 
     # setup wandb
     if args.logging:
@@ -515,7 +524,7 @@ def train(args):
                 "architecture": args.model,
                 "clip_type": args.clip_type,
                 "batch_size": args.batch_size,
-                "out_dir": args.out_dir,
+                "log_dir": args.log_dir,
                 "seed": args.seed,
                 "mode": args.mode,
                 "device": args.device,
@@ -535,7 +544,8 @@ def train(args):
             param.requires_grad_(False)
     device = get_device(args.device)
     model.to(device)
-    display_model_summary(model, input_shape=(1, 3, 224, 224), device=device)
+    display_model_summary(model, input_shape=(1, 3, cfg.dataset.resolution,
+                                              cfg.dataset.resolution), device=device)
 
     # load training data
     train_dataset = CTD(config=cfg.dataset,

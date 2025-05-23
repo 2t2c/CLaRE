@@ -758,14 +758,16 @@ class LARE(DF40):
         self.val = False
         self.split_anchor = split_anchor
         self.transform = A.Compose([
-            A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
-            A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
+            # A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
+            # A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
+            A.RandomResizedCrop(size=(self.img_size, self.img_size),
+                                      scale=(0.8, 1.0),
+                                      ratio=(0.95, 1.05), p=1.0),
             A.OneOf([
                 A.GaussianBlur(blur_limit=(3, 7), p=1.0),
                 A.GaussNoise(p=1.0),
             ], p=0.5),
-            A.RandomRotate90(p=0.33),
-            # A.Flip(p=0.33),
+            A.HorizontalFlip(p=0.5),
         ], p=1.0)
 
 
@@ -924,14 +926,16 @@ class CTD(DF40):
         self.train_list = []
         self.anchor = False
         self.transform = A.Compose([
-            A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
-            A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
+            # A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
+            # A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
+            A.RandomResizedCrop(size=(self.img_size, self.img_size),
+                                      scale=(0.8, 1.0),
+                                      ratio=(0.95, 1.05), p=1.0),
             A.OneOf([
                 A.GaussianBlur(blur_limit=(3, 7), p=1.0),
                 A.GaussNoise(p=1.0),
             ], p=0.5),
-            A.RandomRotate90(p=0.33),
-            # A.Flip(p=0.33),
+            A.HorizontalFlip(p=0.5),
         ], p=1.0)
 
     def __len__(self):
@@ -948,9 +952,6 @@ class CTD(DF40):
             image_paths = [image_paths]
 
         image_tensors = []
-        landmark_tensors = []
-        mask_tensors = []
-        loss_map_tensors = []
         augmentation_seed = None
 
         for image_path in image_paths:

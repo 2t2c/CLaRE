@@ -5,17 +5,8 @@ mode: train
 # log dir 
 log_dir: ~/fomo_logdir
 
-# Model Settings
-pretrained: ~/fomo_logdir/model.pth   # path to a pre-trained model, if using one
-model_name: clip   # model name
-backbone_name: vit  # backbone name
-
-# backbone setting
-backbone_config:
-  mode: original
-  num_classes: 2
-  inc: 3
-  dropout: false
+# LaRE Settings
+# TODO
 
 # CLPPing settings
 clipping:
@@ -87,7 +78,7 @@ dataset:
   with_loss_map: true   # whether to include loss map information in the input
   with_mask: false   # whether to include mask information in the input
   with_landmark: false   # whether to include facial landmark information in the input
-  video_mode: False  # whether to use video-level data
+  video_mode: false  # whether to use video-level data
   clip_size: 8  # number of frames in each clip
 
   # data augmentation
@@ -274,9 +265,6 @@ dataset:
     rddm_Fake: 1
     rddm_Real: 0
 
-    pixart_Fake: 1
-    pixart_Real: 0
-
     stargan_Fake: 1
     stargan_Real: 0
 
@@ -291,119 +279,6 @@ dataset:
 
     CollabDiff_Fake: 1
     CollabDiff_Real: 0
-
-    e4e_Fake: 1
-    e4e_Real: 0
-
-    # GenImage
-    adm_Fake: 1
-    adm_Real: 0
-
-    biggan_Fake: 1
-    biggan_Real: 0
-
-    glide_Fake: 1
-    glide_Real: 0
-
-    midjourney_Fake: 1
-    midjourney_Real: 0
-
-    sdv4_Fake: 1
-    sdv4_Real: 0
-
-    sdv5_Fake: 1
-    sdv5_Real: 0
-
-    vqdm_Fake: 1
-    vqdm_Real: 0
-
-    wukong_Fake: 1
-    wukong_Real: 0
-    simswap_Real: 0
-
-    sadtalker_Fake: 1
-    sadtalker_Real: 0
-
-    wav2lip_Fake: 1
-    wav2lip_Real: 0
-
-    uniface_Fake: 1
-    uniface_Real: 0
-
-    blendface_Fake: 1
-    blendface_Real: 0
-
-    mobileswap_Fake: 1
-    mobileswap_Real: 0
-
-    faceswap_Fake: 1
-    faceswap_Real: 0
-
-    dalle2_face_Fake: 1
-    dalle2_face_Real: 0
-
-    MidJourney_Fake: 1
-    MidJourney_Real: 0
-
-    heygen_Fake: 1
-    heygen_Real: 0
-
-    whichisreal_Fake: 1
-    whichisreal_Real: 0
-
-    StyleGAN2_Fake: 1
-    StyleGAN2_Real: 0
-
-    StyleGAN3_Fake: 1
-    StyleGAN3_Real: 0
-
-    StyleGANXL_Fake: 1
-    StyleGANXL_Real: 0
-
-    ddim_Fake: 1
-    ddim_Real: 0
-
-    DiT_Fake: 1
-    DiT_Real: 0
-
-    pixart_Fake: 1
-    pixart_Real: 0
-
-    SiT_Fake: 1
-    SiT_Real: 0
-
-    sd1.5_Fake: 1
-    sd1.5_Real: 0
-
-    sd2.1_Fake: 1
-    sd2.1_Real: 0
-
-    VQGAN_Fake: 1
-    VQGAN_Real: 0
-
-    rddm_Fake: 1
-    rddm_Real: 0
-
-    pixart_Fake: 1
-    pixart_Real: 0
-
-    stargan_Fake: 1
-    stargan_Real: 0
-
-    starganv2_Fake: 1
-    starganv2_Real: 0
-
-    styleclip_Fake: 1
-    styleclip_Real: 0
-
-    deepfacelab_Fake: 1
-    deepfacelab_Real: 0
-
-    CollabDiff_Fake: 1
-    CollabDiff_Real: 0
-
-    e4e_Fake: 1
-    e4e_Real: 0
 
     # GenImage
     adm_Fake: 1

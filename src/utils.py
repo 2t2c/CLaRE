@@ -237,6 +237,12 @@ def display_args(args, title="Arguments"):
     if not isinstance(args, dict):
         args = vars(args)
 
+    # supress big output
+    try:
+        args.dataset.label_dict = "[SUPPRESSED]"
+    except:
+        pass
+
     table = Table(title=title)
     table.add_column("Argument", style="cyan", no_wrap=True)
     table.add_column("Value", style="magenta")
