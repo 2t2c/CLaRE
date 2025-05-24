@@ -47,7 +47,7 @@ class CLIPClassifierWMap(nn.Module):
 
     def __init__(self, name, pretrained=None, num_classes=2, roi_pooling=False):
         super(CLIPClassifierWMap, self).__init__()
-        self.multiplier = 3
+        self.multiplier = 4 if roi_pooling else 3
         if pretrained:
             self.clip_model, _, self.preprocess = open_clip.create_model_and_transforms(name,
                                                                                         pretrained=pretrained,
@@ -81,7 +81,6 @@ class CLIPClassifierWMap(nn.Module):
         if self.roi_pooling:
             self.roi_pool = ROIPooler(output_size=(14, 14), align=True)
             self.pool = nn.AdaptiveAvgPool2d((1, 1))
-            self.multiplier = 4
         # projection
         self.fc = nn.Linear(1024 * self.multiplier, num_classes)
 
@@ -136,7 +135,7 @@ class CLIPClassifierWMap(nn.Module):
 ### CLIPping Models ###
 class CustomCLIP(nn.Module):
     """
-    CLLPing model that uses prompt learning.
+    CLIPing model that uses prompt learning.
     """
     def __init__(self, cfg, name, pretrained=None):
         super().__init__()
@@ -169,5 +168,109 @@ class CustomCLIP(nn.Module):
 
         logit_scale = self.logit_scale.exp()
         logits = logit_scale * image_features @ text_features.t()
+
+        return logits
+
+### Fusion Module ###
+class FusionCLIP(nn.Module):
+    """
+    Fusion of CLIPClassifierWMap (visual features, attention, ROI, etc.)
+    and CustomCLIP (prompt learning and text features).
+    """
+    def __init__(self, cfg, name, roi_pooling=False, pretrained=None):
+        super().__init__()
+        self.name = name
+        self.roi_pooling = roi_pooling
+        self.multiplier = 4 if roi_pooling else 3
+
+        if pretrained:
+            self.clip_model, _, _ = open_clip.create_model_and_transforms(name,
+                                                                          pretrained=pretrained,
+                                                                          device="cpu")
+        else:
+            self.clip_model, _ = clip.load(name, device="cpu")
+        # prompt learning and text encoder
+        if cfg.clipping.coop.prec in ["fp32", "amp"]:
+            self.clip_model.float()
+        self.classes = ["real", "fake"]
+        self.prompt_learner = PromptLearner(cfg.clipping, self.classes, self.clip_model)
+        self.tokenized_prompts = self.prompt_learner.tokenized_prompts
+        self.text_encoder = TextEncoder(self.clip_model)
+        self.logit_scale = self.clip_model.logit_scale
+        self.dtype = self.clip_model.dtype
+
+        # visual encoder and projection
+        self.image_proj = nn.Linear(768, 1024) if 'ViT' in self.name else nn.Identity()
+        self.text_proj = nn.Linear(768, 1024 * self.multiplier)
+        self.clip_model.encode_image = types.MethodType(clip_encode_image, self.clip_model)
+
+        if 'ViT' in self.name:
+            self.clip_model.visual.forward = types.MethodType(clip_vit_forward, self.clip_model.visual)
+            self.attn_pool = MultiHeadMapAttention(spacial_dim=16)
+        else:
+            self.clip_model.visual.forward = types.MethodType(clip_resnet_forward, self.clip_model.visual)
+            self.attn_pool = MultiHeadMapAttention(spacial_dim=14)
+
+        # Loss map handling
+        self.conv = nn.Conv2d(4, 8, kernel_size=(1, 1))
+        self.conv_align = nn.Conv2d(4, 1024, kernel_size=(1, 1))
+        self.channel_align = ChannelAlignLayer(4, 128, 1024)
+
+        # ROI pooling (optional)
+        if self.roi_pooling:
+            self.roi_pool = ROIPooler(output_size=(14, 14), align=True)
+            self.pool = nn.AdaptiveAvgPool2d((1, 1))
+
+        # final projection layer
+        self.fc = nn.Linear(1024 * self.multiplier, len(self.classes))
+
+    def forward(self, image, loss_map, rois=None):
+        image_feats, block3_feats = self.clip_model.encode_image(image)
+        image_feats = self.image_proj(image_feats)
+
+        if 'ViT' in self.name:
+            aligned_loss_map = F.adaptive_avg_pool2d(loss_map, (16, 16))
+        else:
+            aligned_loss_map = F.adaptive_avg_pool2d(loss_map, (14, 14))
+
+        pooled_loss_map = self.conv(aligned_loss_map)
+        pooled_block3_feats = self.attn_pool(block3_feats, pooled_loss_map)
+        channel_weighted_feats = self.channel_align(block3_feats, loss_map)
+
+        if pooled_block3_feats.dim() == 1:
+            pooled_block3_feats = pooled_block3_feats.unsqueeze(0)
+        if channel_weighted_feats.dim() == 1:
+            channel_weighted_feats = channel_weighted_feats.unsqueeze(0)
+
+        if self.roi_pooling:
+            roi_feats = self.roi_pool(block3_feats, rois)
+            roi_feats = self.pool(roi_feats).squeeze(-1).squeeze(-1)
+
+            batch_size = image.shape[0]
+            aggregated_roi_feats = []
+            roi_offset = 0
+            for b in range(batch_size):
+                num_rois = sum(r[0].item() == b for r in rois)
+                if num_rois == 0:
+                    aggregated_roi_feats.append(torch.zeros_like(image_feats[b]))
+                else:
+                    feats = roi_feats[roi_offset:roi_offset + num_rois]
+                    aggregated_roi_feats.append(feats.mean(dim=0))
+                    roi_offset += num_rois
+            roi_feats = torch.stack(aggregated_roi_feats)
+            image_features = torch.cat([image_feats, pooled_block3_feats, channel_weighted_feats, roi_feats], dim=1) # (B, 4096)
+        else:
+            image_features = torch.cat([image_feats, pooled_block3_feats, channel_weighted_feats], dim=1) # (B, 3072)
+
+        # text features
+        prompts = self.prompt_learner()
+        text_features = self.text_encoder(prompts, self.tokenized_prompts) # (B, 768)
+        text_features = self.text_proj(text_features) # (B, 3072)
+
+        # normalize features
+        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+
+        logits = self.logit_scale.exp() * image_features @ text_features.t() # (B, 2)
 
         return logits

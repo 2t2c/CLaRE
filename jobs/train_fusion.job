@@ -4,11 +4,11 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=18
 #SBATCH --gpus=1
-#SBATCH --job-name=test_clipping
+#SBATCH --job-name=train_clipping
 #SBATCH --ntasks=1
 #SBATCH --time=12:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=./snellius_outputs/clipping/testing/test_clipping_output_%A.out
+#SBATCH --output=./snellius_outputs/clipping/training/train_clipping_output_%A.out
 
 module purge
 module load 2024
@@ -19,30 +19,25 @@ source activate fomo_gpu
 
 
 # global parameters
-MODULE=clipping
-CKPT_FOLDER="/home/scur0555/udit/logdir/clipping/train/1748106023" # path to the checkpoint file
-RUN=test # wandb
-PROJECT=CTD-Test # wandb
+MODULE=fusion
+RUN=train # wandb
+PROJECT=Fusion-Train # wandb
 USER="udit"
 # change this based on your directory structure
 DIR=$HOME/$USER/FoMo/
 cd $DIR
 
-# real and fake
-DATASETS=(heygen MidJourney whichisreal stargan starganv2 styleclip CollabDiff)
-# debug
-# DATASETS=(heygen)
-
 srun python "src/main.py" \
     --module "${MODULE}" \
-    --mode "test" \
+    --mode "train" \
     --run_name "${RUN}" \
     --project "${PROJECT}" \
     --log_dir $HOME/${USER}/logdir/${MODULE}/${RUN} \
-    --test_datasets "${DATASETS[@]}" \
-    --checkpoint "${CKPT_FOLDER}" \
     --model "CLIP:ViT-L/14" \
     --clip_type "${MODULE}" \
-    --batch_size 64 \
+    --eval_every 50 \
+    --log_every 50 \
+    --batch_size 2 \
+    --epochs 2 \
     --logging \
     --device "cuda"

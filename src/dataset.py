@@ -56,7 +56,7 @@ FFpp_pool = ['FaceForensics++', 'FaceShifter',
 
 # dataset directory
 DATASET_DIR = "/scratch-shared/scur0555/datasets"
-
+HOME_DATASET_DIR= "/home/scur0555/datasets"
 
 class UFD(Dataset):
     def __init__(self, real_path,
@@ -751,18 +751,14 @@ class DF40(Dataset):
 
 class LARE(DF40):
     def __init__(self, config, mode,
-                 img_size=224, val_ratio=None, split_anchor=True,
-                 jpeg_quality=None, gaussian_sigma=None, debug=False):
+                 img_size=224, jpeg_quality=None,
+                 gaussian_sigma=None, debug=False):
         # initialize DF40 first (inherits data loading, image_list, label_list, etc.)
         super().__init__(config, jpeg_quality=jpeg_quality, 
                         gaussian_sigma=gaussian_sigma, debug=debug,
                         mode=mode)
         self.img_size = img_size
         self.train_list = []
-        self.anchor_list = []
-        self.anchor = False
-        self.val = False
-        self.split_anchor = split_anchor
         self.transform = A.Compose([
             # A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
             # A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
@@ -788,8 +784,8 @@ class LARE(DF40):
         return map_paths
 
     def __len__(self):
-        assert len(self.image_list) == len(self.label_list), 'Number of images and labels are not equal'
-        # assert len(self.image_list) == len(self.map_paths), 'Number of images and loss maps are not equal'
+        assert len(self.image_list) == len(self.label_list), f'Number of images ({len(self.image_list)}) and labels ({len(self.label_list)}) are not equal'
+        # assert len(self.image_list) == len(self.map_paths), f'Number of images ({len(self.image_list)}) and loss maps ({len(self.map_paths)}) are not equal'
         return len(self.image_list)
 
     def __getitem__(self, index, no_norm=False):
@@ -802,8 +798,6 @@ class LARE(DF40):
             image_paths = [image_paths]
 
         image_tensors = []
-        landmark_tensors = []
-        mask_tensors = []
         loss_map_tensors = []
         augmentation_seed = None
 
@@ -811,14 +805,6 @@ class LARE(DF40):
             # Initialize a new seed for data augmentation at the start of each video
             if self.video_level and image_path == image_paths[0]:
                 augmentation_seed = random.randint(0, 2 ** 32 - 1)
-
-            # Get the loss map, mask and landmark paths
-            mask_path = image_path.replace(
-                'frames', 'masks')  # Use .png for mask
-            landmark_path = image_path.replace('frames', 'landmarks').replace(
-                '.png', '.npy')  # Use .npy for landmark
-            loss_map_path = image_path.replace('frames', 'loss_maps').replace(
-                '.png', '.pt')  # Use .pt for loss map
 
             # Load the image
             try:
@@ -831,6 +817,9 @@ class LARE(DF40):
                                                 f"{DATASET_DIR}/df40/{self.mode}")
                 image_path = image_path.replace("deepfakes_detection_datasets/DF40",
                                                 f"{DATASET_DIR}/df40/{self.mode}")
+                # handle EFSALL_ff
+                if self.mode == "train":
+                    image_path = image_path.replace("/ff", "")
                 image = self.load_rgb(image_path)
             except Exception as e:
                 # Skip this image and return the first one
@@ -841,66 +830,47 @@ class LARE(DF40):
             image = np.array(image)
 
             # Load the loss map
-            # deugging (hardcoded)
-            loss_map_path = "/home/scur0555/udit/lare/test/outputs/heygen/fake_000.pt"
-            loss_map = torch.load(loss_map_path)
-
-            # Load mask and landmark (if needed)
-            if self.mode == 'train' and self.config['with_mask']:
-                mask = self.load_mask(mask_path)
-            else:
-                mask = None
-            if self.mode == 'train' and self.config['with_landmark']:
-                landmarks = self.load_landmark(landmark_path)
-            elif self.config['model_name'] == 'sbi' and self.config['with_landmark']:
-                try:
-                    landmarks = self.load_landmark(landmark_path)
-                except:
-                    landmarks = None
-            else:
-                landmarks = None
+            try:
+                # hardcoded for now
+                image_path = image_path.replace("/ff", "")
+                parts = image_path.split("/")
+                dataset = parts[-3] # VQGAN
+                folder = parts[-2]  # '335'
+                file = parts[-1].replace('.png', '.pt')  # '308.pt'
+                if "face_forensics" in image_path:
+                    loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/face_forensics/{folder}/{file}"
+                else:
+                    loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{file}"
+                loss_map = torch.load(loss_map_path)
+            except Exception as e:
+                # skip this loss map and return the first one
+                # if "face_forensics" not in loss_map_path:
+                # logger.warning(f"Error loading loss map at index {index, loss_map_path}: {e}")
+                # return a zero tensor of expected shape as fallback
+                loss_map = torch.zeros((4, 32, 32)) 
+                # return self.__getitem__(0)
 
             # Do Data Augmentation
             if self.mode == 'train' and self.config['use_data_augmentation']:
-                image_trans, landmarks_trans, mask_trans = self.data_aug(
-                    image, landmarks, mask, augmentation_seed)
+                image_trans, _, _ = self.data_aug(image, augmentation_seed)
             else:
-                image_trans, landmarks_trans, mask_trans = deepcopy(
-                    image), deepcopy(landmarks), deepcopy(mask)
+                image_trans = deepcopy(image)
 
             # To tensor and normalize
             if not no_norm:
                 image_trans = self.normalize(self.to_tensor(image_trans))
-                if self.mode == 'train' and self.config['with_landmark']:
-                    landmarks_trans = torch.from_numpy(landmarks_trans)
-                if self.mode == 'train' and self.config['with_mask']:
-                    mask_trans = torch.from_numpy(mask_trans)
 
             image_tensors.append(image_trans)
-            landmark_tensors.append(landmarks_trans)
-            mask_tensors.append(mask_trans)
             loss_map_tensors.append(loss_map)
 
         if self.video_level:
             # Stack image tensors along a new dimension (time)
             image_tensors = torch.stack(image_tensors, dim=0)
-            # Stack landmark and mask tensors along a new dimension (time)
-            if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in
-                       landmark_tensors):
-                landmark_tensors = torch.stack(landmark_tensors, dim=0)
-            if not any(m is None or (isinstance(m, list) and None in m) for m in mask_tensors):
-                mask_tensors = torch.stack(mask_tensors, dim=0)
         else:
             # Get the first image tensor
             image_tensors = image_tensors[0]
             # Get the first loss map tensor
             loss_map_tensors = loss_map_tensors[0]
-            # Get the first landmark and mask tensors
-            if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in
-                       landmark_tensors):
-                landmark_tensors = landmark_tensors[0]
-            if not any(m is None or (isinstance(m, list) and None in m) for m in mask_tensors):
-                mask_tensors = mask_tensors[0]
 
         return image_tensors, label, loss_map_tensors
 
@@ -1071,6 +1041,9 @@ def describe_dataloader(dataloader, title="DataLoader Summary"):
             label_info = str(first_batch[1])
             table.add_row("Label sample", label_info)
             table.add_row("Input sample shape", shape_info)
+            if len(first_batch) > 2:
+                loss_map_shape = str(first_batch[2].shape)
+                table.add_row("Loss map shape", loss_map_shape)
         elif isinstance(first_batch, dict):
             table.add_row("Sample keys", str(list(first_batch.keys())))
             for key, value in first_batch.items():

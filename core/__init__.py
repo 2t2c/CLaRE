@@ -1,4 +1,4 @@
-from .model import CLIPModel, CLIPClassifierWMap, CustomCLIP
+from .model import CLIPModel, CLIPClassifierWMap, CustomCLIP, FusionCLIP
 
 VALID_NAMES = [
     # OpenAI CLIP
@@ -27,6 +27,9 @@ def get_model(name, clip_type=None, roi_pooling=False, cfg=None):
                                       roi_pooling=roi_pooling)
         elif clip_type == "clipping":
             return CustomCLIP(cfg, name.split(":")[1])
+        elif clip_type == "fusion":
+            return FusionCLIP(cfg, name.split(":")[1],
+                              roi_pooling=roi_pooling)
         else:
             return CLIPModel(name.split(":")[1])
     elif name.startswith("OpenCLIP:"):
@@ -37,6 +40,10 @@ def get_model(name, clip_type=None, roi_pooling=False, cfg=None):
         elif clip_type == "clipping":
             return CustomCLIP(cfg, name.split(":")[1],
                               pretrained=name.split(":")[2])
+        elif clip_type == "fusion":
+            return FusionCLIP(cfg, name.split(":")[1],
+                              pretrained=name.split(":")[2],
+                              roi_pooling=roi_pooling)
         else:
             return CLIPModel(name.split(":")[1], pretrained=name.split(":")[2])
     else:

@@ -13,6 +13,7 @@ sys.path.append(os.path.abspath(os.path.join("..")))
 from train_lare import train as train_lare
 from train_clipping import train as train_clipping
 from test_clipping import test as test_clipping
+from train_fusion import train as train_fusion
 
 # logging
 os.environ["WANDB__SERVICE_WAIT"] = "300"
@@ -48,13 +49,15 @@ def main(args):
             train_clipping(args)
         elif args.module == "lare":
             train_lare(args)
+        elif args.module == "fusion":
+            train_fusion(args)
         else:
-            logger.error("Invalid module. Choose 'lare', 'clipping', or 'both'.")
+            logger.error("Invalid module. Choose 'lare', 'clipping', or 'fusion'.")
     elif mode == "test":
         if args.module == "clipping":
             test_clipping(args)
         else:
-            logger.error("Invalid module. Choose 'lare', 'clipping', or 'both'.")
+            logger.error("Invalid module. Choose 'lare', 'clipping', or 'fusion'.")
     # elif mode == "both": # TODO: implement both
     #     train(args)
     #     test(args)
@@ -71,7 +74,7 @@ if __name__ == '__main__':
                         help="Data and Model config")
     # type of module
     parser.add_argument('--module', type=str,
-                        choices=['lare', 'clipping', 'both'],
+                        choices=['lare', 'clipping', 'fusion'],
                         default="clipping")
 
     # wandb arguments
