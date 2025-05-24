@@ -340,6 +340,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
     auc_meter.reset()
     best_val, best_step = 0, 0
     start_time = time.time()
+    epoch += 1
     pbar = tqdm(train_data_loader, desc=f"Epoch {epoch}", unit="batch")
 
     for batch in pbar:
@@ -389,14 +390,14 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         if step % args.eval_every == 0:
             # save directly after training to avoid errors and wasted training
             torch.save(model.state_dict(), os.path.join(args.log_dir, 'latest.pt'))
-            val_auc, val_acc, val_ap, val_raw_acc, val_r_acc, val_f_acc = validation_contrastive(model, val_data_loader,
+            auc, ap, acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = validation_contrastive(model, val_data_loader,
                                                                                                  step, device)
-            if val_auc > best_val:
-                best_val = val_auc
+            if auc > best_val:
+                best_val = auc
                 best_step = step
                 ckpt = {
                     "state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
+                    # "optimizer_state_dict": optimizer.state_dict(),
                     "best_val": best_val,
                     "best_step": best_step
                 }
@@ -407,12 +408,15 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
             # log metrics to wandb
             val_metrics = {
                 "val/epoch": epoch,
-                "val/roc_auc": val_auc,
-                "val/accuracy": val_acc,
-                "val/average_precision": val_ap,
-                "val/raw_accuracy": val_raw_acc,
-                "val/real_accuracy": val_r_acc,
-                "val/fake_accuracy": val_f_acc,
+                "val/roc_auc": auc,
+                "val/average_precision": ap,
+                "val/accuracy": acc,
+                "val/real_accuracy": r_acc,
+                "val/fake_accuracy": f_acc,
+                "val/raw_accuracy": raw_acc,
+                "val/raw_real_accuracy": raw_r_acc,
+                "val/raw_fake_accuracy": raw_f_acc,
+                "val/best_thresh": best_thresh,
                 "val/step": step,
             }
             if args.logging:
@@ -486,17 +490,19 @@ def validation_contrastive(model, data_loader, step, device):
     pred_labels_list[pred_labels_list <= thresh] = 0
 
     auc = roc_auc_score(gt_labels_list, prob_labels_list)
-    accuracy = accuracy_score(gt_labels_list, pred_labels_list)
     ap = average_precision_score(gt_labels_list, prob_labels_list)
 
+    # best thresh accuracy
     best_acc, best_thresh = search_best_acc(gt_labels_list, prob_labels_list)
     logger.info(f'Search ACC: {best_acc}, Search Thresh: {best_thresh}')
+    r_acc = accuracy_score(gt_labels_list[gt_labels_list == 0], prob_labels_list[gt_labels_list == 0] > best_thresh)
+    f_acc = accuracy_score(gt_labels_list[gt_labels_list == 1], prob_labels_list[gt_labels_list == 1] > best_thresh)
 
-    r_acc = accuracy_score(gt_labels_list[gt_labels_list == 0], prob_labels_list[gt_labels_list == 0] > 0.5)
-    f_acc = accuracy_score(gt_labels_list[gt_labels_list == 1], prob_labels_list[gt_labels_list == 1] > 0.5)
+    raw_r_acc = accuracy_score(gt_labels_list[gt_labels_list == 0], prob_labels_list[gt_labels_list == 0] > 0.5)
+    raw_f_acc = accuracy_score(gt_labels_list[gt_labels_list == 1], prob_labels_list[gt_labels_list == 1] > 0.5)
     raw_acc = accuracy_score(gt_labels_list, prob_labels_list > 0.5)
 
-    return auc, best_acc, ap, raw_acc, r_acc, f_acc
+    return auc, ap, best_acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh
 
 
 def train(args):
@@ -507,9 +513,6 @@ def train(args):
     cfg = load_config(config_file)
     # add args inside cfg as CfgNode
     cfg.args = CN(vars(args))
-    # dump the config
-    with open(f"{args.log_dir}/config.yaml", "w") as f:
-        f.write(cfg.dump())
     # pretty print args
     display_args(args, title="Config Arguments")
 
@@ -568,6 +571,8 @@ def train(args):
 
     # setting optimizer, scaler, and scheduler
     scaler = GradScaler() if cfg.clipping.coop.prec == "amp" else None
+    # change default config
+    cfg.clipping.optim.max_epoch = args.epochs
     optimizer = build_optimizer(model.prompt_learner, cfg.clipping.optim)
     scheduler = build_lr_scheduler(optimizer, cfg.clipping.optim)
 
@@ -586,6 +591,10 @@ def train(args):
                                device, scaler, step)
         # scheduler step
         scheduler.step()
+
+    # dump the config
+    with open(f"{args.log_dir}/config.yaml", "w") as f:
+        f.write(cfg.dump())
 
     if args.logging:
         # exit session

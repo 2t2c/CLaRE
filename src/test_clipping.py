@@ -97,7 +97,7 @@ def test_contrastive(model, data_loader, device):
     model.eval()
 
     gt_labels_list, pred_labels_list, prob_labels_list = [], [], []
-    pbar = tqdm(data_loader, desc=f"Validating", unit="batch")
+    pbar = tqdm(data_loader, desc=f"Testing", unit="batch")
 
     with torch.no_grad():
         for batch in pbar:
@@ -200,11 +200,13 @@ def test(args):
                                               cfg.dataset.resolution), device=device)
 
     # start testing
+    logger.info(f'Testing Datasets - "{args.test_datasets}"')
     for dataset in args.test_datasets:
         # change dataset name
         cfg.dataset.test_dataset = dataset
         cfg.dataset.subset = []
         # load validation data
+        logger.info(f"Testing on '{dataset}'")
         test_dataset = CTD(config=cfg.dataset,
                           mode="test",
                           jpeg_quality=cfg.dataset.jpeg_quality,
@@ -218,21 +220,21 @@ def test(args):
     
         # log metrics
         metrics = {
-            f"{dataset}/roc_auc": auc,
-            f"{dataset}/average_precision": ap,
-            f"{dataset}/accuracy": best_acc,
-            f"{dataset}/real_accuracy": r_acc,
-            f"{dataset}/fake_accuracy": f_acc,
-            f"{dataset}/raw_accuracy": raw_acc,
-            f"{dataset}/raw_real_accuracy": raw_r_acc,
-            f"{dataset}/raw_fake_accuracy": raw_f_acc,
-            f"{dataset}/best_thresh": best_thresh
+            f"roc_auc/{dataset}": auc,
+            f"average_precision/{dataset}": ap,
+            f"accuracy/{dataset}": best_acc,
+            f"real_accuracy/{dataset}": r_acc,
+            f"fake_accuracy/{dataset}": f_acc,
+            f"raw_accuracy/{dataset}": raw_acc,
+            f"raw_real_accuracy/{dataset}": raw_r_acc,
+            f"raw_fake_accuracy/{dataset}": raw_f_acc,
+            f"best_thresh/{dataset}": best_thresh
         }
         wandb.log(metrics)
     
         # export metrics
         export_path = os.path.join(
-            cfg.log_dir, f"metrics.json")
+            args.log_dir, f"metrics.json")
     
         # read existing or create new
         if os.path.exists(export_path):
@@ -248,6 +250,6 @@ def test(args):
         with open(export_path, "w") as f:
             json.dump(all_metrics, f, indent=4)
     
-        if args.logging:
-            # exit session
-            wandb.finish()
+    if args.logging:
+        # exit session
+        wandb.finish()

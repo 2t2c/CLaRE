@@ -4,11 +4,11 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=18
 #SBATCH --gpus=1
-#SBATCH --job-name=train
+#SBATCH --job-name=test_clipping
 #SBATCH --ntasks=1
 #SBATCH --time=12:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=train_clipping_output_%A.out
+#SBATCH --output=./snellius_outputs/clipping/testing/test_clipping_output_%A.out
 
 module purge
 module load 2024
@@ -20,7 +20,7 @@ source activate fomo_gpu
 
 # global parameters
 MODULE=clipping
-CKPT_FOLDER="<mode.pth>" # path to the checkpoint file
+CKPT_FOLDER="/home/scur0555/udit/logdir/clipping/train/1748054336" # path to the checkpoint file
 RUN=test # wandb
 PROJECT=CTD-Test # wandb
 USER="udit"
@@ -29,9 +29,9 @@ DIR=$HOME/$USER/FoMo/
 cd $DIR
 
 # real and fake
-DATASETS=(heygen MidJourney whichfaceisreal stargan starganv2 styleclip CollabDiff)
+DATASETS=(heygen MidJourney whichisreal stargan starganv2 styleclip CollabDiff)
 # debug
-DATASETS=(heygen)
+# DATASETS=(heygen)
 
 srun python "src/main.py" \
     --module "${MODULE}" \
@@ -43,6 +43,6 @@ srun python "src/main.py" \
     --checkpoint "${CKPT_FOLDER}" \
     --model "CLIP:ViT-L/14" \
     --clip_type "${MODULE}" \
-    --batch_size 32 \
+    --batch_size 64 \
     --logging \
     --device "cuda"

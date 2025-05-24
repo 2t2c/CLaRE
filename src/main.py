@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # testing config args
     parser.add_argument("--test_datasets", nargs='+', default=None,
                         help="DF40 dataset name")
-    parser.add_argument('--checkpoint', type=int,
+    parser.add_argument('--checkpoint', type=str,
                         default=None, help='Checkpoint to evaluate')
 
     # dataset args
