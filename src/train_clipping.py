@@ -509,10 +509,10 @@ def train(args):
     # add args inside cfg as CfgNode
     cfg.args = CN(vars(args))
     # dump the config
-    with open(f"{cfg.log_dir}config.yaml", "w") as f:
+    with open(f"{args.log_dir}/config.yaml", "w") as f:
         f.write(cfg.dump())
     # pretty print args
-    display_args(cfg.clone(), title="Config Arguments")
+    display_args(args, title="Config Arguments")
 
     # setup wandb
     if args.logging:
@@ -531,8 +531,8 @@ def train(args):
                 "eval_every": args.eval_every,
                 "log_every": args.log_every,
                 "epochs": args.epochs,
-                "train_dataset": cfg["train_dataset"],
-                "test_dataset": cfg["test_dataset"],
+                "train_dataset": cfg.dataset.train_dataset,
+                "test_dataset": cfg.dataset.test_dataset,
             },
             settings=wandb.Settings(_service_wait=300, init_timeout=120))
 

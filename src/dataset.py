@@ -192,6 +192,7 @@ class DF40(Dataset):
         # Image settings
         self.jpeg_quality = jpeg_quality
         self.gaussian_sigma = gaussian_sigma
+        self.subset = config.subset
 
         # Set the dataset dictionary based on the mode
         if self.mode == 'train':
@@ -330,6 +331,11 @@ class DF40(Dataset):
 
             # Iterate over the videos in the dataset
             for video_name, video_info in sub_dataset_info.items():
+                # use subset if provided
+                if self.subset:
+                    if not any(sub in video_name for sub in self.subset):
+                        # skip dataset
+                        continue
                 # Unique video name
                 unique_video_name = video_info['label'] + '_' + video_name
 
@@ -340,7 +346,7 @@ class DF40(Dataset):
                 label = self.config['label_dict'][video_info['label']]
                 frame_paths = video_info['frames']
                 if len(frame_paths) == 0:
-                    print(f"{unique_video_name} is None. Let's skip it.")
+                    # logger.warning(f"{unique_video_name} is None. Let's skip it.")
                     continue
                 # sorted video path to the lists
                 if self.video_level:
@@ -625,7 +631,7 @@ class DF40(Dataset):
                 image = self.load_rgb(image_path)
             except Exception as e:
                 # Skip this image and return the first one
-                print(f"Error loading image at index {index, image_path}: {e}")
+                logger.warning(f"Error loading image at index {index, image_path}: {e}")
                 return self.__getitem__(0)
             # Convert to numpy array for data augmentation
             image = np.array(image)
@@ -970,6 +976,9 @@ class CTD(DF40):
                                                 f"{DATASET_DIR}/df40/{self.mode}")
                 image_path = image_path.replace("deepfakes_detection_datasets/DF40",
                                                 f"{DATASET_DIR}/df40/{self.mode}")
+                # handle EFSALL_ff
+                if self.mode == "train":
+                    image_path = image_path.replace("/ff", "")
                 image = self.load_rgb(image_path)
             except Exception as e:
                 # Skip this image and return the first one
@@ -1041,8 +1050,10 @@ def describe_dataloader(dataloader, title="DataLoader Summary"):
     if hasattr(dataset, 'class_to_idx'):
         table.add_row("Class to index mapping", str(dataset.class_to_idx))
         class_info_found = True
-    if hasattr(dataset, 'targets'):
-        targets = dataset.targets
+    if hasattr(dataset, 'data_dict') and 'label' in dataset.data_dict:
+        targets = dataset.data_dict['label']
+        if isinstance(targets, tuple):
+            targets = list(targets)
         if isinstance(targets, list):
             targets = torch.tensor(targets)
         label_counts = Counter(targets.tolist())
@@ -1058,8 +1069,8 @@ def describe_dataloader(dataloader, title="DataLoader Summary"):
             # Show shape of first input and sample label summary
             shape_info = str(first_batch[0].shape)
             label_info = str(first_batch[1])
-            table.add_row("Input sample shape", shape_info)
             table.add_row("Label sample", label_info)
+            table.add_row("Input sample shape", shape_info)
         elif isinstance(first_batch, dict):
             table.add_row("Sample keys", str(list(first_batch.keys())))
             for key, value in first_batch.items():

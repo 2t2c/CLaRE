@@ -36,7 +36,9 @@ def main(args):
     if mode == "train":
         # create directory if not exists
         uid = str(int(time.time()))
-        log_dir = os.path.join(os.path.expanduser("~"), args.log_dir, args.module, args.run_name, uid)
+        logger.info(f"Session Started with UID {uid}")
+        # log_dir = os.path.join(os.path.expanduser("~"), args.log_dir, args.module, args.run_name, uid)
+        log_dir = os.path.join(os.path.expanduser("~"), args.log_dir, uid)
         os.makedirs(log_dir, exist_ok=True)
         args.uid = uid
         args.log_dir = log_dir
@@ -75,8 +77,8 @@ if __name__ == '__main__':
                         default="debug", help='wandb run name')
     parser.add_argument('--log_every', type=int,
                         default=50, help='logging step')
-    parser.add_argument('--logging', type=bool,
-                        default=False, help='online logging')
+    parser.add_argument('--logging', action='store_true',
+                        help='online logging')
 
     # training/testing config args
     parser.add_argument('--mode', type=str,
@@ -94,8 +96,7 @@ if __name__ == '__main__':
                         help="100, 90, 80, ... 30. Used to test robustness of our model. Does not apply if None")
     parser.add_argument('--gaussian_sigma', type=int, default=None,
                         help="0,1,2,3,4. Used to test robustness of the model. Does not apply if None")
-    parser.add_argument('--debug', type=bool,
-                        default=True, help='Debugging on few samples')
+    parser.add_argument('--debug', action='store_true', help='Debugging on few samples')
 
     # model configs
     # parser.add_argument("--model", type=str, default='CLIP:RN50')

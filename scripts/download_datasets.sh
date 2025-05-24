@@ -63,7 +63,11 @@ curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
   -o df40_test_files.json
 
 # step 2: download each .zip file iteratively by reading the saved .json mappings
-# single file: curl -H "Authorization: Bearer ${ACCESS_TOKEN}" https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media -o ${FILENAME}.zip
+
+# single file download (example)
+# FILEID=1Y15vpgltFD1amMEABCRkOiDEK-aQpRJ8
+# FILENAME=DiT
+# curl -H "Authorization: Bearer ${ACCESS_TOKEN}" https://www.googleapis.com/drive/v3/files/${FILEID}?alt=media -o ${FILENAME}.zip
 
 jq -r '.files[] | select(.mimeType != "application/vnd.google-apps.folder" and (.name | endswith(".zip"))) | [.id, .name] | @tsv' df40_test_files.json | \
 while IFS=$'\t' read -r FILEID FILENAME; do
