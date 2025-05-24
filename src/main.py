@@ -12,7 +12,7 @@ from rich.logging import RichHandler
 sys.path.append(os.path.abspath(os.path.join("..")))
 from train_lare import train as train_lare
 from train_clipping import train as train_clipping
-# from test import test
+from test_clipping import test as test_clipping
 
 # logging
 os.environ["WANDB__SERVICE_WAIT"] = "300"
@@ -33,15 +33,16 @@ def main(args):
     Main function to train/test the architecture pipeline.
     """
     mode = args.mode
+    # create directory if not exists
+    uid = str(int(time.time()))
+    logger.info(f"Session Started with UID '{uid}' and Mode '{mode}'")
+    # log_dir = os.path.join(os.path.expanduser("~"), args.log_dir, args.module, args.run_name, uid)
+    log_dir = os.path.join(os.path.expanduser("~"), args.log_dir, uid)
+    os.makedirs(log_dir, exist_ok=True)
+    args.uid = uid
+    args.log_dir = log_dir
+
     if mode == "train":
-        # create directory if not exists
-        uid = str(int(time.time()))
-        logger.info(f"Session Started with UID {uid}")
-        # log_dir = os.path.join(os.path.expanduser("~"), args.log_dir, args.module, args.run_name, uid)
-        log_dir = os.path.join(os.path.expanduser("~"), args.log_dir, uid)
-        os.makedirs(log_dir, exist_ok=True)
-        args.uid = uid
-        args.log_dir = log_dir
         # start training
         if args.module == "clipping":
             train_clipping(args)
@@ -49,8 +50,11 @@ def main(args):
             train_lare(args)
         else:
             logger.error("Invalid module. Choose 'lare', 'clipping', or 'both'.")
-    # elif mode == "test": # TODO: implement test
-    #     test(args)
+    elif mode == "test":
+        if args.module == "clipping":
+            test_clipping(args)
+        else:
+            logger.error("Invalid module. Choose 'lare', 'clipping', or 'both'.")
     # elif mode == "both": # TODO: implement both
     #     train(args)
     #     test(args)
@@ -90,6 +94,12 @@ if __name__ == '__main__':
                         help="Device to run the model on: cpu | cuda | mps")
     parser.add_argument('--eval_every', type=int,
                         default=50, help='Evaluation step')
+
+    # testing config args
+    parser.add_argument("--test_datasets", nargs='+', default=None,
+                        help="DF40 dataset name")
+    parser.add_argument('--checkpoint', type=int,
+                        default=None, help='Checkpoint to evaluate')
 
     # dataset args
     parser.add_argument('--jpeg_quality', type=int, default=95,

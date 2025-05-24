@@ -20,24 +20,29 @@ source activate fomo_gpu
 
 # global parameters
 MODULE=clipping
-RUN=train # wandb
-PROJECT=CTD-Train # wandb
+CKPT_FOLDER="<mode.pth>" # path to the checkpoint file
+RUN=test # wandb
+PROJECT=CTD-Test # wandb
 USER="udit"
 # change this based on your directory structure
 DIR=$HOME/$USER/FoMo/
 cd $DIR
 
+# real and fake
+DATASETS=(heygen MidJourney whichfaceisreal stargan starganv2 styleclip CollabDiff)
+# debug
+DATASETS=(heygen)
+
 srun python "src/main.py" \
     --module "${MODULE}" \
-    --mode "train" \
+    --mode "test" \
     --run_name "${RUN}" \
     --project "${PROJECT}" \
     --log_dir $HOME/${USER}/logdir/${MODULE}/${RUN} \
+    --test_datasets "${DATASETS[@]}" \
+    --checkpoint "${CKPT_FOLDER}" \
     --model "CLIP:ViT-L/14" \
     --clip_type "${MODULE}" \
-    --eval_every 250 \
-    --log_every 100 \
     --batch_size 32 \
-    --epochs 5 \
     --logging \
     --device "cuda"

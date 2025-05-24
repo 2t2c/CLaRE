@@ -488,7 +488,6 @@ def validation_contrastive(model, data_loader, step, device):
     auc = roc_auc_score(gt_labels_list, prob_labels_list)
     accuracy = accuracy_score(gt_labels_list, pred_labels_list)
     ap = average_precision_score(gt_labels_list, prob_labels_list)
-    model.train()
 
     best_acc, best_thresh = search_best_acc(gt_labels_list, prob_labels_list)
     logger.info(f'Search ACC: {best_acc}, Search Thresh: {best_thresh}')
@@ -572,25 +571,21 @@ def train(args):
     optimizer = build_optimizer(model.prompt_learner, cfg.clipping.optim)
     scheduler = build_lr_scheduler(optimizer, cfg.clipping.optim)
 
-    if args.mode == "test":
-        logger.info(f"Evaluation Started! - Debugging: {args.debug}")
-        # TODO: add model loading and evaluation function
-    else:
-        # setting scheduler
-        loss_meter = StatsMeter()
-        auc_meter = StatsMeter()
+    # setting scheduler
+    loss_meter = StatsMeter()
+    auc_meter = StatsMeter()
 
-        # starting the training
-        logger.info(f"Training Started! - Debugging: {args.debug}")
-        step = 0
-        for epoch in range(args.epochs):
-            # train one epoch
-            step = train_one_epoch(model, train_data_loader, val_data_loader,
-                                   optimizer, epoch,
-                                   loss_meter, auc_meter, args, cfg,
-                                   device, scaler, step)
-            # scheduler step
-            scheduler.step()
+    # starting the training
+    logger.info(f"Training Started! - Debugging: {args.debug}")
+    step = 0
+    for epoch in range(args.epochs):
+        # train one epoch
+        step = train_one_epoch(model, train_data_loader, val_data_loader,
+                               optimizer, epoch,
+                               loss_meter, auc_meter, args, cfg,
+                               device, scaler, step)
+        # scheduler step
+        scheduler.step()
 
     if args.logging:
         # exit session
