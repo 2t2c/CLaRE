@@ -1,22 +1,30 @@
-# Training and Testing Dataset and Model Config
-
 mode: train
-
 log_dir: ~/fomo_logdir
 
-# Model Settings
-pretrained: ~/fomo_logdir/model.pth   # path to a pre-trained model, if using one
-model_name: clip   # model name
-backbone_name: vit  # backbone name
+pretrained_path: ~/fomo_logdir/model.pth
+model_name: clip
+backbone_name: vit
 
-# backbone setting
 backbone_config:
   mode: original
   num_classes: 2
   inc: 3
   dropout: false
 
-# CLPPing settings
+data_augmentation:
+  enable: true
+  augmentations:
+    flip_prob: 0.5
+    rotate_prob: 0.5
+    rotate_limit: [-10, 10]
+    blur_prob: 0.5
+    blur_limit: [3, 7]
+    brightness_prob: 0.5
+    brightness_limit: [-0.1, 0.1]
+    contrast_limit: [-0.1, 0.1]
+    quality_lower: 40
+    quality_upper: 100
+
 clipping:
   coop:
     n_ctx: 16
@@ -36,7 +44,8 @@ clipping:
     interpolation: "bicubic"
     pixel_mean: [0.48145466, 0.4578275, 0.40821073]
     pixel_std: [0.26862954, 0.26130258, 0.27577711]
-    transforms: ["random_resized_crop", "random_flip", "normalize", "compress_blur"]
+    transforms:
+      ["random_resized_crop", "random_flip", "normalize", "compress_blur"]
 
   optim:
     name: "sgd"
@@ -47,7 +56,7 @@ clipping:
     warmup_type: "constant"
     warmup_cons_lr: 1.0e-5
     warmup_min_lr: 1.0e-5
-    stepsize: [-1, ]
+    stepsize: [-1]
     gamma: 0.1
     momentum: 0.9
     weight_decay: 5.0e-4
@@ -67,364 +76,17 @@ clipping:
     backbone:
       name: "vit-l/14"
 
-# Dataset Settings
 dataset:
   name: DF40
-  all_dataset: [FaceForensics++, FF-F2F, FF-DF, FF-FS, FF-NT, FaceShifter, DeepFakeDetection, Celeb-DF-v1, Celeb-DF-v2, DFDCP, DFDC, DeeperForensics-1.0, UADFV]
-  train_dataset: [FSAll_ff]
-  test_dataset: heygen
-  configs_folder: '/scratch-shared/scur0555/datasets/df40/configs'
-
-  jpeg_quality: 95  # .png to .jpeg quality for training and testing
-
-  compression: c23  # compression-level for videos
-  train_batchSize: 32   # training batch size
-  test_batchSize: 32   # test batch size
-  num_workers: 4   # number of data loading workers
-  frame_num: {'train': 8, 'test': 8}   # number of frames to use per video in training and testing
-  resolution: 224   # resolution of output image to network
-  with_loss_map: true   # whether to include loss map information in the input
-  with_mask: false   # whether to include mask information in the input
-  with_landmark: false   # whether to include facial landmark information in the input
-  video_mode: False  # whether to use video-level data
-  clip_size: 8  # number of frames in each clip
-
-  # data augmentation
-  use_data_augmentation: true  # Add this flag to enable/disable data augmentation
-  data_aug:
-    flip_prob: 0.5
-    rotate_prob: 0.5
-    rotate_limit: [-10, 10]
-    blur_prob: 0.5
-    blur_limit: [3, 7]
-    brightness_prob: 0.5
-    brightness_limit: [-0.1, 0.1]
-    contrast_limit: [-0.1, 0.1]
-    quality_lower: 40
-    quality_upper: 100
-
-  # mean and std for normalization
+  root: /scratch-shared/scur0555/datasets/clipping_the_deception/
+  manifest: /scratch-shared/scur0555/datasets/clipping_the_deception/manifest.json
+  train_batch_size: 32
+  test_batch_size: 32
+  num_workers: 8
+  jpeg_quality: 95 # .png to .jpeg quality for training and testing
+  frame_num: { train: 8, test: 8 } # number of frames to use per video in training and testing
+  resolution: 224 # resolution of output image to network
+  clip_size: 16 # number of frames in each clip
+  class_to_label: { fake: 1, real: 0 }
   mean: [0.5, 0.5, 0.5]
   std: [0.5, 0.5, 0.5]
-
-  # label settings
-  label_dict:
-    # DFD
-    DFD_fake: 1
-    DFD_real: 0
-    # FF++ + FaceShifter(FF-real+FF-FH)
-    FF-SH: 1
-    FF-F2F: 1
-    FF-DF: 1
-    FF-FS: 1
-    FF-NT: 1
-    FF-FH: 1
-    FF-real: 0
-    # CelebDF
-    CelebDFv1_real: 0
-    CelebDFv1_fake: 1
-    CelebDFv2_real: 0
-    CelebDFv2_fake: 1
-    # DFDCP
-    DFDCP_Real: 0
-    DFDCP_FakeA: 1
-    DFDCP_FakeB: 1
-    # DFDC
-    DFDC_Fake: 1
-    DFDC_Real: 0
-    # DeeperForensics-1.0
-    DF_fake: 1
-    DF_real: 0
-    # UADFV
-    UADFV_Fake: 1
-    UADFV_Real: 0
-    # Roop
-    roop_Real: 0
-    roop_Fake: 1
-
-
-    # DF40
-    FSAll_Fake: 1
-    FSAll_Real: 0
-
-    FRAll_Fake: 1
-    FRAll_Real: 0
-
-    EFSAll_Fake: 1
-    EFSAll_Real: 0
-
-    DF40_train_Fake: 1
-    DF40_train_Real: 0
-
-    e4s_Fake: 1
-    e4s_Real: 0
-
-    danet_Fake: 1
-    danet_Real: 0
-
-    fomm_Fake: 1
-    fomm_Real: 0
-
-    Collaborative_Diffusion_Fake: 1
-    Collaborative_Diffusion_Real: 0
-
-    e4e_Fake: 1
-    e4e_Real: 0
-
-    hyperreenact_Fake: 1
-    hyperreenact_Real: 0
-
-    MRAA_Fake: 1
-    MRAA_Real: 0
-
-    one_shot_free_Fake: 1
-    one_shot_free_Real: 0
-
-    pirender_Fake: 1
-    pirender_Real: 0
-
-    tpsm_Fake: 1
-    tpsm_Real: 0
-
-    facedancer_Fake: 1
-    facedancer_Real: 0
-
-    facevid2vid_Fake: 1
-    facevid2vid_Real: 0
-
-    mcnet_Fake: 1
-    mcnet_Real: 0
-
-    mraa_Fake: 1
-    mraa_Real: 0
-
-    fsgan_Fake: 1
-    fsgan_Real: 0
-
-    lia_Fake: 1
-    lia_Real: 0
-
-    inswap_Fake: 1
-    inswap_Real: 0
-
-    simswap_Fake: 1
-    simswap_Real: 0
-
-    sadtalker_Fake: 1
-    sadtalker_Real: 0
-
-    wav2lip_Fake: 1
-    wav2lip_Real: 0
-
-    uniface_Fake: 1
-    uniface_Real: 0
-
-    blendface_Fake: 1
-    blendface_Real: 0
-
-    mobileswap_Fake: 1
-    mobileswap_Real: 0
-
-    faceswap_Fake: 1
-    faceswap_Real: 0
-
-    dalle2_face_Fake: 1
-    dalle2_face_Real: 0
-
-    MidJourney_Fake: 1
-    MidJourney_Real: 0
-
-    heygen_Fake: 1
-    heygen_Real: 0
-
-    whichisreal_Fake: 1
-    whichisreal_Real: 0
-
-    StyleGAN2_Fake: 1
-    StyleGAN2_Real: 0
-
-    StyleGAN3_Fake: 1
-    StyleGAN3_Real: 0
-
-    StyleGANXL_Fake: 1
-    StyleGANXL_Real: 0
-
-    ddim_Fake: 1
-    ddim_Real: 0
-
-    DiT_Fake: 1
-    DiT_Real: 0
-
-    pixart_Fake: 1
-    pixart_Real: 0
-
-    SiT_Fake: 1
-    SiT_Real: 0
-
-    sd1.5_Fake: 1
-    sd1.5_Real: 0
-
-    sd2.1_Fake: 1
-    sd2.1_Real: 0
-
-    VQGAN_Fake: 1
-    VQGAN_Real: 0
-
-    rddm_Fake: 1
-    rddm_Real: 0
-
-    pixart_Fake: 1
-    pixart_Real: 0
-
-    stargan_Fake: 1
-    stargan_Real: 0
-
-    starganv2_Fake: 1
-    starganv2_Real: 0
-
-    styleclip_Fake: 1
-    styleclip_Real: 0
-
-    deepfacelab_Fake: 1
-    deepfacelab_Real: 0
-
-    CollabDiff_Fake: 1
-    CollabDiff_Real: 0
-
-    e4e_Fake: 1
-    e4e_Real: 0
-
-    # GenImage
-    adm_Fake: 1
-    adm_Real: 0
-
-    biggan_Fake: 1
-    biggan_Real: 0
-
-    glide_Fake: 1
-    glide_Real: 0
-
-    midjourney_Fake: 1
-    midjourney_Real: 0
-
-    sdv4_Fake: 1
-    sdv4_Real: 0
-
-    sdv5_Fake: 1
-    sdv5_Real: 0
-
-    vqdm_Fake: 1
-    vqdm_Real: 0
-
-    wukong_Fake: 1
-    wukong_Real: 0
-    simswap_Real: 0
-
-    sadtalker_Fake: 1
-    sadtalker_Real: 0
-
-    wav2lip_Fake: 1
-    wav2lip_Real: 0
-
-    uniface_Fake: 1
-    uniface_Real: 0
-
-    blendface_Fake: 1
-    blendface_Real: 0
-
-    mobileswap_Fake: 1
-    mobileswap_Real: 0
-
-    faceswap_Fake: 1
-    faceswap_Real: 0
-
-    dalle2_face_Fake: 1
-    dalle2_face_Real: 0
-
-    MidJourney_Fake: 1
-    MidJourney_Real: 0
-
-    heygen_Fake: 1
-    heygen_Real: 0
-
-    whichisreal_Fake: 1
-    whichisreal_Real: 0
-
-    StyleGAN2_Fake: 1
-    StyleGAN2_Real: 0
-
-    StyleGAN3_Fake: 1
-    StyleGAN3_Real: 0
-
-    StyleGANXL_Fake: 1
-    StyleGANXL_Real: 0
-
-    ddim_Fake: 1
-    ddim_Real: 0
-
-    DiT_Fake: 1
-    DiT_Real: 0
-
-    pixart_Fake: 1
-    pixart_Real: 0
-
-    SiT_Fake: 1
-    SiT_Real: 0
-
-    sd1.5_Fake: 1
-    sd1.5_Real: 0
-
-    sd2.1_Fake: 1
-    sd2.1_Real: 0
-
-    VQGAN_Fake: 1
-    VQGAN_Real: 0
-
-    rddm_Fake: 1
-    rddm_Real: 0
-
-    pixart_Fake: 1
-    pixart_Real: 0
-
-    stargan_Fake: 1
-    stargan_Real: 0
-
-    starganv2_Fake: 1
-    starganv2_Real: 0
-
-    styleclip_Fake: 1
-    styleclip_Real: 0
-
-    deepfacelab_Fake: 1
-    deepfacelab_Real: 0
-
-    CollabDiff_Fake: 1
-    CollabDiff_Real: 0
-
-    e4e_Fake: 1
-    e4e_Real: 0
-
-    # GenImage
-    adm_Fake: 1
-    adm_Real: 0
-
-    biggan_Fake: 1
-    biggan_Real: 0
-
-    glide_Fake: 1
-    glide_Real: 0
-
-    midjourney_Fake: 1
-    midjourney_Real: 0
-
-    sdv4_Fake: 1
-    sdv4_Real: 0
-
-    sdv5_Fake: 1
-    sdv5_Real: 0
-
-    vqdm_Fake: 1
-    vqdm_Real: 0
-
-    wukong_Fake: 1
-    wukong_Real: 0

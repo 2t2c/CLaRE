@@ -7,7 +7,7 @@ This project explores multimodal approaches for deepfake detection by integratin
 * Modules
   * [`lare/`](lare): Latent Reconstruction Error
   * [`ufd/`](ufd): UniversalFakeDetect integration
-* General 
+* General
   * [`configs/`](configs): Configuration files for experiments
   * [`jobs/`](jobs): Job scripts for batch execution
   * [`assets/`](assets): Miscellaneous utility files
@@ -34,7 +34,6 @@ We use the [DF40 Dataset](https://github.com/YZY-stack/DF40), which includes:
 | Training (10)   | **Entire Face Synthesis (EFS)**: DiT, SiT, StyleGAN2, StyleGAN3, StyleGANXL, VQGAN, ddim, pixart, rddm, sd2.1 |
 | Testing (17)    | **EFS** + **Others** (heygen, MidJourney, whichfaceisreal, stargan, starganv2, styleclip, CollabDiff) |
 
-
 ## Methodology
 
 The approach integrates CoOp/CoCoOp with CLIP, and fuses visual (ViT) and textual features using LaRE and MLP modules:
@@ -52,14 +51,14 @@ The approach integrates CoOp/CoCoOp with CLIP, and fuses visual (ViT) and textua
      * Enhancement 2: use RoI pooling
 3. **Evaluation Pipeline**
    * Evaluate on DF40 test (8 datasets)
-     - heygen
-     - MidJourney
-     - whichfaceisreal
-     - stargan
-     - starganv2
-     - styleclip
-     - e4e
-     - CollabDif
+     * heygen
+     * MidJourney
+     * whichfaceisreal
+     * stargan
+     * starganv2
+     * styleclip
+     * e4e
+     * CollabDif
 
 ### Architecture Components
 
@@ -86,7 +85,6 @@ LaRE ──> Stage 1 (*) ──> Stage 2 (**) ───┘
     - Concaenate
     - Summing
 ```
-
 
 ## References
 
