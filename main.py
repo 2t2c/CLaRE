@@ -123,7 +123,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     args.seed = None
-    args.debug = False
 
     if args.seed is not None:
         set_seed(args.seed)

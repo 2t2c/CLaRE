@@ -1,4 +1,4 @@
-import argparse
+import itertools
 import os
 import random
 from pathlib import Path
@@ -8,12 +8,10 @@ import cv2
 import numpy as np
 import torch
 import torchvision.transforms as transforms
-import yaml
 from PIL import Image
-from rich import print as rprint
 from torch.utils.data import Dataset
 
-from utils import LOGGER, describe_dataloader, display_args, png_to_jpg
+from utils import LOGGER, png_to_jpg
 
 from .manifest import load_dataset_manifest
 from .transforms import get_clip_transform
@@ -37,7 +35,7 @@ class DF40(Dataset):
         self.mode = mode
         self.debug = debug
         self.config = config
-        self.frame_num = config["frame_num"][mode]
+        self.frames_per_video = config["frames_per_video"][mode]
         self.clip_size = config["clip_size"]
         self.jpeg_quality = jpeg_quality
         self.classname_to_label = config["class_to_label"]
@@ -57,11 +55,9 @@ class DF40(Dataset):
 
     def load_dataset(self, manifest: dict, mode: str) -> tuple[list[str], list[int]]:
         if mode == "train":
-            image_paths, labels = self.load_train_dataset(manifest, mode)
+            image_paths, labels = self.load_train_dataset(manifest)
         elif mode == "test":
-            image_paths, labels = self.load_test_dataset(
-                manifest, mode, self.test_subset
-            )
+            image_paths, labels = self.load_test_dataset(manifest, self.test_subset)
         else:
             raise ValueError(f"Unsupported mode: {mode}")
 
@@ -70,56 +66,65 @@ class DF40(Dataset):
         image_paths, labels = zip(*combined)
         return list(image_paths), list(labels)
 
-    def load_train_dataset(
-        self, manifest: dict, mode: str
-    ) -> tuple[tuple[str], tuple[int]]:
+    def load_train_dataset(self, manifest: dict) -> tuple[tuple[str], tuple[int]]:
         """Collects image and label lists.
 
         Args:
             manifest_path: Path to the manifest JSON file.
-            mode: Dataset split to load ('train', 'test', 'val').
 
         Returns:
             Tuple of (list of image paths, list of labels).
         """
-
         LOGGER.info("Loading dataset...")
+
+        mode = "train"
         dataset_root = Path(manifest["root"])
         real_img_paths = []
         fake_img_paths = []
-        for classname, subsets in manifest[mode].items():
-            image_paths = real_img_paths if classname == "real" else fake_img_paths
 
-            for subset, rel_image_paths in subsets.items():
+        for classname, subsets in manifest[mode].items():
+            image_paths = fake_img_paths if classname == "fake" else real_img_paths
+
+            for subset, subset_img_paths in subsets.items():
+                if self.frames_per_video is not None:
+                    subset_img_paths = self.sample_sorted_paths(
+                        subset_img_paths, self.frames_per_video
+                    )
+
                 # Build full image paths
                 path_to_prepend = Path(dataset_root) / mode / classname / subset
-                full_paths = [str(path_to_prepend / img) for img in rel_image_paths]
+                full_paths = [str(path_to_prepend / img) for img in subset_img_paths]
                 image_paths.extend(full_paths)
 
         image_paths, labels = self.balance_dataset(real_img_paths, fake_img_paths)
         return image_paths, labels
 
     def load_test_dataset(
-        self, manifest: dict, mode: str, subset: str
+        self, manifest: dict, subset: str
     ) -> tuple[list[str], list[int]]:
         """Collects image and label lists.
 
         Args:
             manifest: Dataset manifest dictionary.
-            mode: Dataset split to load ('train', 'test', 'val').
+            subset: Specific subset name within the mode to load.
 
         Returns:
             Tuple of (list of image paths, list of labels).
         """
         LOGGER.info("Loading dataset...")
-        image_paths, labels = [], []
 
+        mode = "test"
         fake_label = self.classname_to_label["fake"]
         real_label = self.classname_to_label["real"]
         dataset_root = Path(manifest["root"])
         subset_prefix = dataset_root / mode / "fake" / subset
 
         fake_imgs = manifest[mode][subset]["fake"]
+        subset_is_split_in_videos = subset.endswith(("-cdf", "-ff"))
+
+        if self.frames_per_video is not None and subset_is_split_in_videos:
+            fake_imgs = self.sample_sorted_paths(fake_imgs, self.frames_per_video)
+
         fake_paths = [str(subset_prefix / img) for img in fake_imgs]
         fake_labels = [fake_label] * len(fake_paths)
 
@@ -131,11 +136,15 @@ class DF40(Dataset):
             real_prefix = subset_prefix / "real"
 
         real_imgs = manifest[mode][subset]["real"]
+
+        if self.frames_per_video is not None and subset_is_split_in_videos:
+            real_imgs = self.sample_sorted_paths(real_imgs, self.frames_per_video)
+
         real_paths = [str(real_prefix / img) for img in real_imgs]
         real_labels = [real_label] * len(real_paths)
 
-        image_paths.extend(fake_paths + real_paths)
-        labels.extend(fake_labels + real_labels)
+        image_paths = fake_paths + real_paths
+        labels = fake_labels + real_labels
 
         return image_paths, labels
 
@@ -154,6 +163,7 @@ class DF40(Dataset):
         real_labels = [real_label] * len(balanced_real_paths)
         fake_labels = [fake_label] * len(fake_image_paths)
         labels = real_labels + fake_labels
+
         return image_paths, labels
 
     def load_image(self, image_path: str):
@@ -220,6 +230,28 @@ class DF40(Dataset):
             np.random.seed()
 
         return augmented_img
+
+    @staticmethod
+    def sample_sorted_paths(
+        image_paths: list[str], frames_per_video: int, seed: Optional[int] = None
+    ) -> list[str]:
+        if seed is not None:
+            random.seed(seed)
+
+        def group_key(path: str) -> str:
+            path.rsplit("/", 1)[0]
+
+        sampled = []
+
+        # Group paths by video folder
+        for folder, group in itertools.groupby(image_paths, key=group_key):
+            group = list(group)
+
+            if len(group) > frames_per_video:
+                group = random.sample(group, frames_per_video)
+
+            sampled.extend(group)
+        return sampled
 
     @staticmethod
     def collate_fn(batch: list):
@@ -328,100 +360,3 @@ class LARE(DF40):
         loss_maps = torch.stack(loss_maps, dim=0)
 
         return {"image": images, "label": labels, "loss_map": loss_maps}
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--dataset", type=str, choices=["ufd", "df40", "lare"], default="lare"
-    )
-    # add UFD-specific arguments
-    parser.add_argument(
-        "--real_path", type=str, default=None, help="dir name or a pickle"
-    )
-    parser.add_argument(
-        "--fake_path", type=str, default=None, help="dir name or a pickle"
-    )
-    parser.add_argument("--data_mode", type=str, default=None, help="wang2020 or ours")
-    parser.add_argument(
-        "--max_sample",
-        type=int,
-        default=1000,
-        help="only check this number of images for both fake/real",
-    )
-    parser.add_argument("--arch", default="clip", type=str)
-    # add DF40-specific config path
-    parser.add_argument(
-        "--df40_mode",
-        type=str,
-        choices=["train", "test"],
-        default="train",
-        help="DF40 dataset mode name",
-    )
-    parser.add_argument("--df40_name", type=str, default=None, help="DF40 dataset name")
-    parser.add_argument(
-        "--df40_config", type=str, default="train_config.yaml", help="DF40 mode config"
-    )
-    # generic params
-    parser.add_argument("--batch_size", type=int, default=1)
-    parser.add_argument(
-        "--jpeg_quality",
-        type=int,
-        default=95,
-        help="100, 90, 80, ... 30. Used to test robustness of our model. Not apply if None",
-    )
-    parser.add_argument(
-        "--gaussian_sigma",
-        type=int,
-        default=None,
-        help="0,1,2,3,4.     Used to test robustness of our model. Not apply if None",
-    )
-
-    args = parser.parse_args()
-    display_args(args)
-
-    if args.dataset == "df40":
-        with open("./configs/" + args.df40_config, "r") as f:
-            config = yaml.safe_load(f)
-        if args.df40_name is not None:
-            config[f"{args.df40_mode}_dataset"] = args.df40_name
-        dataset = DF40(config=config, mode=args.df40_mode)
-        loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=args.batch_size,
-            shuffle=True if args.df40_mode == "train" else False,
-            num_workers=4,
-            collate_fn=dataset.collate_fn,
-        )
-    elif args.dataset == "lare":
-        with open("./configs/" + args.df40_config, "r") as f:
-            config = yaml.safe_load(f)
-        if args.df40_name is not None:
-            config[f"{args.df40_mode}_dataset"] = args.df40_name
-        dataset = LARE(
-            config=config, mode=args.df40_mode, jpeg_quality=args.jpeg_quality
-        )
-        loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=args.batch_size,
-            shuffle=True if args.df40_mode == "train" else False,
-            num_workers=4,
-            collate_fn=dataset.collate_fn,
-        )
-    elif args.dataset == "ctd":
-        with open("./configs/" + args.df40_config, "r") as f:
-            config = yaml.safe_load(f)
-        if args.df40_name is not None:
-            config[f"{args.df40_mode}_dataset"] = args.df40_name
-        dataset = CTD(
-            config=config, mode=args.df40_mode, jpeg_quality=args.jpeg_quality
-        )
-        loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=args.batch_size,
-            shuffle=True if args.df40_mode == "train" else False,
-            num_workers=4,
-            collate_fn=dataset.collate_fn,
-        )
-    rprint(f"Loaded dataset '{args.dataset}' successfully.")
-    describe_dataloader(loader)
