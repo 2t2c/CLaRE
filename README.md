@@ -83,7 +83,7 @@ LaRE ──> Stage 1 (*) ──> Stage 2 (**) ───┘
     - LaRE Original Configuration
     - LaRE with RoI Pooling
 (x) Shape Matching:
-    - Concaenate
+    - Concatenate
     - Summing
 ```
 
