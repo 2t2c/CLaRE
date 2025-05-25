@@ -28,7 +28,7 @@ cd $HOME/$USER/FoMo/
 srun python "main.py" \
   --log-level "info" \
   --debug \
-  --mode "train" \
+  --mode "test" \
   --module "${MODULE}" \
   --project "${PROJECT}" \
   --run-name "${RUN}" \
@@ -38,4 +38,5 @@ srun python "main.py" \
   --log-every 250 \
   --batch-size 128 \
   --epochs 2 \
-  --device "cuda"
+  --device "cuda" \
+  --test-checkpoint "./checkpoints/clipping/best.pth"

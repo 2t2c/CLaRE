@@ -2,22 +2,20 @@ from collections import Counter
 from datetime import timedelta
 
 import torch
+import yaml
 from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
 from torchinfo import summary
+
 from utils.logger import LOGGER
 
 
-def display_args(args, title="Arguments"):
-    """Nicely print argparse.Namespace or dict using rich.
-
-    :param:
-        args: argparse.Namespace or dict
-    :param:
-        title: Optional table title
-    """
-    if not isinstance(args, dict):
+def display_cfg(args, title="Arguments"):
+    """Nicely print argparse.Namespace, CfgNode, or dict using rich."""
+    if hasattr(args, "dump"):  # handle CfgNode
+        args = yaml.safe_load(args.dump())
+    elif not isinstance(args, dict):
         args = vars(args)
 
     table = Table(title=title)
@@ -31,7 +29,7 @@ def display_args(args, title="Arguments"):
     console.print(table)
 
 
-def display_metrics(metrics: dict, elasped, title="Validation Metrics"):
+def display_metrics(metrics: dict, elapsed: float, title: str = "Validation Metrics"):
     """
     Nicely print metric dictionary using rich.
 
@@ -40,7 +38,7 @@ def display_metrics(metrics: dict, elasped, title="Validation Metrics"):
     :param:
         title: Optional table title
     """
-    rprint("Time Elasped:", str(timedelta(seconds=elasped)))
+    rprint("Time Elasped:", str(timedelta(seconds=elapsed)))
     table = Table(title=title)
     table.add_column("Metric", style="cyan", no_wrap=True)
     table.add_column("Value", style="magenta")

@@ -21,7 +21,6 @@ class DF40(Dataset):
     def __init__(
         self,
         config: dict,
-        jpeg_quality: Optional[int] = None,
         debug: bool = False,
         mode: str = "train",
         test_subset=None,
@@ -36,10 +35,9 @@ class DF40(Dataset):
         self.debug = debug
         self.config = config
         self.frames_per_video = config["frames_per_video"][mode]
-        self.clip_size = config["clip_size"]
-        self.jpeg_quality = jpeg_quality
+        self.jpeg_quality = config["jpeg_quality"]
         self.classname_to_label = config["class_to_label"]
-        self.image_resolution = config["resolution"]
+        self.image_resolution = config["image_resolution"]
         self.transform = None
         self.test_subset = test_subset
         manifest_path = Path(config["manifest"])
@@ -50,8 +48,9 @@ class DF40(Dataset):
         assert self.image_paths and self.labels, msg
 
         if self.debug:
-            self.image_paths = self.image_paths[: min(10_000, len(self.image_paths))]
-            self.labels = self.labels[: min(10_000, len(self.image_paths))]
+            number_of_images = min(10_000, len(self.image_paths))
+            self.image_paths = self.image_paths[:number_of_images]
+            self.labels = self.labels[:number_of_images]
 
     def load_dataset(self, manifest: dict, mode: str) -> tuple[list[str], list[int]]:
         if mode == "train":
@@ -233,13 +232,13 @@ class DF40(Dataset):
 
     @staticmethod
     def sample_sorted_paths(
-        image_paths: list[str], frames_per_video: int, seed: Optional[int] = None
+        image_paths: list[str], frames_per_video: int, seed: int | None = None
     ) -> list[str]:
         if seed is not None:
             random.seed(seed)
 
         def group_key(path: str) -> str:
-            path.rsplit("/", 1)[0]
+            return path.rsplit("/")[-2]
 
         sampled = []
 
@@ -301,17 +300,10 @@ class CTD(DF40):
         config,
         mode,
         img_size=224,
-        jpeg_quality=None,
         debug=False,
         test_subset=None,
     ):
-        super().__init__(
-            config,
-            jpeg_quality=jpeg_quality,
-            debug=debug,
-            mode=mode,
-            test_subset=test_subset,
-        )
+        super().__init__(config, debug, mode, test_subset)
         self.transform = get_clip_transform(img_size)
 
 
@@ -321,15 +313,9 @@ class LARE(DF40):
         config,
         mode,
         img_size=224,
-        jpeg_quality=None,
         debug=False,
     ):
-        super().__init__(
-            config,
-            jpeg_quality=jpeg_quality,
-            debug=debug,
-            mode=mode,
-        )
+        super().__init__(config, debug=debug, mode=mode)
         self.transform = get_clip_transform(img_size)
 
     def __getitem__(self, index, normalize: bool = True):

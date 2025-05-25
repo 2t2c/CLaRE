@@ -8,10 +8,7 @@ import torch
 
 
 def extract_rois(image, merge_landmarks=False):
-    """
-    Extracts rois from the image based on facial landmarks.
-    """
-    # convert torch tensor to numpy image
+    """Extracts rois from the image based on facial landmarks."""
     if isinstance(image, str):
         image = face_recognition.load_image_file(image)
     if isinstance(image, torch.Tensor):

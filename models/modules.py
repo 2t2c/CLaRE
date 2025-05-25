@@ -132,7 +132,7 @@ class PoolWithMap(nn.Module):
             loss_map.dtype
         )  # (HW+1)NC
 
-        queries = torch.cat([x[:1], loss_map[:1]], dim=0)  # 2 * N * C
+        # queries = torch.cat([x[:1], loss_map[:1]], dim=0)  # 2 * N * C
 
         x, _ = F.multi_head_attention_forward(
             query=x[:1],

@@ -8,7 +8,18 @@ from typing import Optional
 from utils.logger import LOGGER
 
 
-def get_image_paths(path: Path, images_per_video: Optional[int] = None) -> list[str]:
+def construct_subset_entry(path: Path, label: str) -> dict:
+    return {
+        "root": str(path.resolve()),
+        "label": label,
+        "images": get_image_paths(path),
+    }
+
+
+def create_manifest(train: list[str], val: list[str], test: list[str]): ...
+
+
+def get_image_paths(path: Path) -> list[str]:
     """Recursively collects paths to all image files in a directory and its subdirectories.
 
     Parameters:
