@@ -1,5 +1,5 @@
 """
-Script to train the CLIPping prompt-tuning architecture pipeline.
+Script to test the trained architectures' pipeline.
 """
 
 import os
@@ -32,7 +32,7 @@ from rich import print as rprint
 import wandb
 from loss import LabelSmoothingLoss
 from utils import set_seed, get_device, display_metrics, display_model_summary, load_config, display_args
-from dataset import describe_dataloader, CTD
+from dataset import describe_dataloader, CTD, LARE
 from yacs.config import CfgNode as CN
 import logging
 
@@ -158,6 +158,9 @@ def test(args):
     cfg = load_config(config_file)
     # add args inside cfg as CfgNode
     cfg.args = CN(vars(args))
+    # change args
+    cfg.dataset.subset = []
+    cfg.dataset.frame_num.test = args.test_ratio
     # dump the config
     with open(f"{args.log_dir}/config.yaml", "w") as f:
         f.write(cfg.dump())
@@ -178,17 +181,15 @@ def test(args):
                 "seed": args.seed,
                 "mode": args.mode,
                 "device": args.device,
-                "test_dataset": cfg.dataset.test_dataset,
+                "test_datasets": args.test_datasets,
+                "test_ratio": cfg.dataset.frame_num.test,
                 "checkpoint": args.checkpoint,
+                "train_uid": args.checkpoint.split("/")[-1]
             },
             settings=wandb.Settings(_service_wait=300, init_timeout=120))
 
     # load model
     model = get_model(name=args.model, clip_type=args.clip_type, cfg=cfg)
-    # freeze all except prompt_learner
-    for name, param in model.named_parameters():
-        if "prompt_learner" not in name:
-            param.requires_grad_(False)
     device = get_device(args.device)
     model.to(device)
     # load model
@@ -204,7 +205,6 @@ def test(args):
     for dataset in args.test_datasets:
         # change dataset name
         cfg.dataset.test_dataset = dataset
-        cfg.dataset.subset = []
         # load validation data
         logger.info(f"Testing on '{dataset}'")
         test_dataset = CTD(config=cfg.dataset,

@@ -34,6 +34,7 @@ from utils import set_seed, get_device, display_metrics, display_model_summary, 
 from dataset import describe_dataloader, CTD
 from yacs.config import CfgNode as CN
 import logging
+import copy
 
 SCHEDULERS = ["single_step", "multi_step", "cosine"]
 OPTIMIZERS = ["adam", "amsgrad", "sgd", "rmsprop", "radam", "adamw"]
@@ -513,11 +514,22 @@ def train(args):
     cfg = load_config(config_file)
     # add args inside cfg as CfgNode
     cfg.args = CN(vars(args))
+    # change default config
+    cfg.clipping.optim.max_epoch = args.epochs
+    # dump the config
+    with open(f"{args.log_dir}/config.yaml", "w") as f:
+        f.write(cfg.dump())
     # pretty print args
     display_args(args, title="Config Arguments")
 
     # setup wandb
     if args.logging:
+        wandb_cfg = copy.deepcopy(cfg)
+        # supress big output
+        try:
+            wandb_cfg.dataset.label_dict = "[SUPPRESSED]"
+        except:
+            pass
         wandb.init(
             project=args.project,
             entity="FoMo",
@@ -535,6 +547,11 @@ def train(args):
                 "epochs": args.epochs,
                 "train_dataset": cfg.dataset.train_dataset,
                 "test_dataset": cfg.dataset.test_dataset,
+                "subset": cfg.dataset.subset,
+                "train_ratio": cfg.dataset.frame_num.train,
+                "test_ratio": cfg.dataset.frame_num.test,
+                "debug": args.debug,
+                "config": wandb_cfg,
             },
             settings=wandb.Settings(_service_wait=300, init_timeout=120))
 
@@ -571,8 +588,6 @@ def train(args):
 
     # setting optimizer, scaler, and scheduler
     scaler = GradScaler() if cfg.clipping.coop.prec == "amp" else None
-    # change default config
-    cfg.clipping.optim.max_epoch = args.epochs
     optimizer = build_optimizer(model.prompt_learner, cfg.clipping.optim)
     scheduler = build_lr_scheduler(optimizer, cfg.clipping.optim)
 
@@ -591,10 +606,6 @@ def train(args):
                                device, scaler, step)
         # scheduler step
         scheduler.step()
-
-    # dump the config
-    with open(f"{args.log_dir}/config.yaml", "w") as f:
-        f.write(cfg.dump())
 
     if args.logging:
         # exit session

@@ -844,11 +844,10 @@ class LARE(DF40):
                 loss_map = torch.load(loss_map_path)
             except Exception as e:
                 # skip this loss map and return the first one
-                # if "face_forensics" not in loss_map_path:
-                # logger.warning(f"Error loading loss map at index {index, loss_map_path}: {e}")
+                logger.warning(f"Error loading loss map at index {index, loss_map_path}: {e}")
                 # return a zero tensor of expected shape as fallback
-                loss_map = torch.zeros((4, 32, 32)) 
-                # return self.__getitem__(0)
+                # loss_map = torch.zeros((4, 32, 32)) 
+                return self.__getitem__(0)
 
             # Do Data Augmentation
             if self.mode == 'train' and self.config['use_data_augmentation']:

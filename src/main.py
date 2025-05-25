@@ -12,7 +12,7 @@ from rich.logging import RichHandler
 sys.path.append(os.path.abspath(os.path.join("..")))
 from train_lare import train as train_lare
 from train_clipping import train as train_clipping
-from test_clipping import test as test_clipping
+from test import test
 from train_fusion import train as train_fusion
 
 # logging
@@ -54,10 +54,7 @@ def main(args):
         else:
             logger.error("Invalid module. Choose 'lare', 'clipping', or 'fusion'.")
     elif mode == "test":
-        if args.module == "clipping":
-            test_clipping(args)
-        else:
-            logger.error("Invalid module. Choose 'lare', 'clipping', or 'fusion'.")
+        test(args)
     # elif mode == "both": # TODO: implement both
     #     train(args)
     #     test(args)
@@ -109,6 +106,8 @@ if __name__ == '__main__':
                         help="100, 90, 80, ... 30. Used to test robustness of our model. Does not apply if None")
     parser.add_argument('--gaussian_sigma', type=int, default=None,
                         help="0,1,2,3,4. Used to test robustness of the model. Does not apply if None")
+    parser.add_argument('--train_ratio', type=int, default=32, help='Total train frames per video')
+    parser.add_argument('--test_ratio', type=int, default=8, help='Total test frames per video')
     parser.add_argument('--debug', action='store_true', help='Debugging on few samples')
 
     # model configs

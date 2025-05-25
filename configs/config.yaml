@@ -31,7 +31,7 @@ clipping:
     transforms: ["random_resized_crop", "random_flip", "normalize", "compress_blur"]
 
   optim:
-    name: "sgd"
+    name: "adam"
     lr: 0.002
     max_epoch: 2
     lr_scheduler: "cosine"
@@ -73,7 +73,7 @@ dataset:
   train_batchSize: 32   # training batch size
   test_batchSize: 32   # test batch size
   num_workers: 4   # number of data loading workers
-  frame_num: {'train': 8, 'test': 8}   # number of frames to use per video in training and testing
+  frame_num: {'train': 32, 'test': 8}   # number of frames to use per video in training and testing
   resolution: 224   # resolution of output image to network
   with_loss_map: true   # whether to include loss map information in the input
   with_mask: false   # whether to include mask information in the input
