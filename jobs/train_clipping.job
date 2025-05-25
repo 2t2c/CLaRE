@@ -32,7 +32,7 @@ srun python "src/main.py" \
     --mode "train" \
     --run_name "${RUN}" \
     --project "${PROJECT}" \
-    --log_dir $HOME/${USER}/logdir/${MODULE}/${RUN} \
+    --log_dir $HOME/${USER}/logdir/${MODULE}/train \
     --model "CLIP:ViT-L/14" \
     --clip_type "${MODULE}" \
     --eval_every 200 \

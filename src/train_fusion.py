@@ -542,6 +542,7 @@ def train(args):
             entity="FoMo",
             name=args.run_name + "/" + args.uid,
             config={
+                "uid": args.uid,
                 "architecture": args.model,
                 "clip_type": args.clip_type,
                 "batch_size": args.batch_size,

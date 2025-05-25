@@ -831,16 +831,40 @@ class LARE(DF40):
 
             # Load the loss map
             try:
-                # hardcoded for now
+                # hardcoded for now (TODO: fix lare extraction script)
+                image_path = image_path.replace("/frames", "")
                 image_path = image_path.replace("/ff", "")
                 parts = image_path.split("/")
                 dataset = parts[-3] # VQGAN
                 folder = parts[-2]  # '335'
-                file = parts[-1].replace('.png', '.pt')  # '308.pt'
+                file = parts[-1].split(".")[0] + ".pt"
                 if "face_forensics" in image_path:
                     loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/face_forensics/{folder}/{file}"
                 else:
-                    loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{file}"
+                    if any(substring in image_path for substring in [
+                            "MidJourney", "whichisreal", "stargan", 
+                            "starganv2", "styleclip", "CollabDiff"
+                        ]):
+                        image_path = image_path.replace("/test", "")
+                        parts = image_path.split("/")
+                        dataset = parts[-2]
+                        file = parts[-1].split(".")[0] + ".pt"
+                        if "real" in image_path:
+                            prefix = "real"
+                            dataset = parts[-3]
+                        if "fake" in image_path:
+                            prefix = "fake"
+                            dataset = parts[-3]
+                        if "CollabDiff" in image_path and "fake" in image_path:
+                            file = parts[-2]
+                            loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/CollabDiff/{prefix}_{file}.pt"
+                        else:
+                            loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{prefix}_{file}"
+                    elif "heygen" in image_path:
+                        dataset, folder, subfolder, file = parts[-4:]
+                        loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{subfolder}/{file}.pt"
+                    else:
+                        loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{file}"
                 loss_map = torch.load(loss_map_path)
             except Exception as e:
                 # skip this loss map and return the first one

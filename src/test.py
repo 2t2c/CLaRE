@@ -177,11 +177,14 @@ def test(args):
 
     # setup wandb
     if args.logging:
+        train_uid = args.checkpoint.split("/")[-1]
         wandb.init(
             project=args.project,
             entity="FoMo",
-            name=args.run_name + "/" + args.uid,
+            name=args.run_name + "/" + train_uid,
             config={
+                "uid": args.uid,
+                "train_uid": train_uid,
                 "architecture": args.model,
                 "clip_type": args.clip_type,
                 "batch_size": args.batch_size,
@@ -192,7 +195,6 @@ def test(args):
                 "test_datasets": args.test_datasets,
                 "test_ratio": cfg.dataset.frame_num.test,
                 "checkpoint": args.checkpoint,
-                "train_uid": args.checkpoint.split("/")[-1]
             },
             settings=wandb.Settings(_service_wait=300, init_timeout=120))
 
@@ -248,6 +250,7 @@ def test(args):
             f"raw_fake_accuracy/{dataset}": raw_f_acc,
             f"best_thresh/{dataset}": best_thresh
         }
+        display_metrics(metrics, title=f"{dataset} Test Metrics")
         wandb.log(metrics)
     
         # export metrics

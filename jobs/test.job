@@ -18,9 +18,9 @@ source activate fomo_gpu
 
 
 # global parameters
-MODULE=clipping
-CKPT_FOLDER="/home/scur0555/udit/logdir/clipping/train/1748127143" # path to the checkpoint file
-RUN=clipping # wandb
+MODULE=fusion
+CKPT_FOLDER="/home/scur0555/udit/logdir/fusion/train/1748129590" # path to the checkpoint file
+RUN=fusion # wandb
 PROJECT=DF40-Test # wandb
 USER="udit"
 # change this based on your directory structure
@@ -30,14 +30,14 @@ cd $DIR
 # real and fake
 DATASETS=(heygen MidJourney whichisreal stargan starganv2 styleclip CollabDiff)
 # debug
-# DATASETS=(heygen)
+# DATASETS=(CollabDiff)
 
 srun python "src/main.py" \
     --module "${MODULE}" \
     --mode "test" \
     --run_name "${RUN}" \
     --project "${PROJECT}" \
-    --log_dir $HOME/${USER}/logdir/${MODULE}/${RUN} \
+    --log_dir $HOME/${USER}/logdir/${MODULE}/test \
     --test_datasets "${DATASETS[@]}" \
     --checkpoint "${CKPT_FOLDER}" \
     --model "CLIP:ViT-L/14" \

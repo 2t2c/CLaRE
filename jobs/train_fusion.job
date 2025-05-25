@@ -30,7 +30,7 @@ cd $DIR
 srun python "src/main.py" \
     --module "${MODULE}" \
     --mode "train" \
-    --run_name "${RUN}" \
+    --run_name "attnv2_${RUN}" \
     --project "${PROJECT}" \
     --log_dir $HOME/${USER}/logdir/${MODULE}/${RUN} \
     --model "CLIP:ViT-L/14" \

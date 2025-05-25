@@ -5,6 +5,11 @@ mode: train
 # log dir 
 log_dir: ~/fomo_logdir
 
+# Fusion Settings
+fusion:
+  model:
+    attention_type: "v1"
+    
 # LaRE Settings
 # TODO
 

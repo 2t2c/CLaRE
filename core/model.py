@@ -206,10 +206,16 @@ class FusionCLIP(nn.Module):
 
         if 'ViT' in self.name:
             self.clip_model.visual.forward = types.MethodType(clip_vit_forward, self.clip_model.visual)
-            self.attn_pool = MultiHeadMapAttention(spacial_dim=16)
+            if cfg.fusion.model.attention_type == 'v2':
+                self.attn_pool = MultiHeadMapAttentionV2(spacial_dim=16)
+            else:
+                self.attn_pool = MultiHeadMapAttention(spacial_dim=16)
         else:
             self.clip_model.visual.forward = types.MethodType(clip_resnet_forward, self.clip_model.visual)
-            self.attn_pool = MultiHeadMapAttention(spacial_dim=14)
+            if cfg.fusion.model.attention_type == 'v2':
+                self.attn_pool = MultiHeadMapAttentionV2(spacial_dim=14)
+            else:
+                self.attn_pool = MultiHeadMapAttention(spacial_dim=14)
 
         # Loss map handling
         self.conv = nn.Conv2d(4, 8, kernel_size=(1, 1))

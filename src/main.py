@@ -60,7 +60,7 @@ def main(args):
     #     test(args)
     else:
         logger.error("Invalid mode. Choose 'train', 'test', 'both'.")
-
+    logger.info(f"Session Completed with UID '{uid}' and Mode '{mode}'")
 
 if __name__ == '__main__':
     # argparse
