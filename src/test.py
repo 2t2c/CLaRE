@@ -89,7 +89,7 @@ def search_best_acc(gt_labels, pred_probs):
     return best_acc, best_threshold
 
 
-def test_contrastive(model, data_loader, device):
+def test_contrastive(model, data_loader, module, device):
     """
     Testing function for the model.
     """
@@ -101,16 +101,24 @@ def test_contrastive(model, data_loader, device):
 
     with torch.no_grad():
         for batch in pbar:
-            images, labels = batch
-            images, labels = images.to(device), labels.to(device)
+            if module in ["fusion", "lare"]:
+                images, labels, loss_maps = batch
+                images = images.to(device)
+                labels = labels.flatten().squeeze().to(device)
+                loss_maps = loss_maps.to(device)
+            else:
+                images, labels = batch
+                images = images.to(device)
+                labels = labels.to(device)
             try:
-                with torch.no_grad():
+                if module in ["fusion", "lare"]:
+                    logits = model(images, loss_maps)
+                else:
                     logits = model(images)
-                    prob = torch.softmax(logits, dim=-1)  # bs * 2
-            except:  # skip last batch
+                prob = torch.softmax(logits, dim=-1)
+            except:
                 logger.warning('Bad evaluation batch!', exc_info=True)
                 raise
-                # continue
             gt_labels_list.append(labels)
             prob_labels_list.append(prob[:, 1])
 
@@ -207,16 +215,26 @@ def test(args):
         cfg.dataset.test_dataset = dataset
         # load validation data
         logger.info(f"Testing on '{dataset}'")
-        test_dataset = CTD(config=cfg.dataset,
-                          mode="test",
-                          jpeg_quality=cfg.dataset.jpeg_quality,
-                          debug=args.debug)
+        if args.module == "clipping":
+            test_dataset = CTD(config=cfg.dataset,
+                               mode="test",
+                               jpeg_quality=cfg.dataset.jpeg_quality,
+                               debug=args.debug)
+        elif args.module in ["fusion", "lare"]:
+            test_dataset = LARE(config=cfg.dataset,
+                               mode="test",
+                               jpeg_quality=cfg.dataset.jpeg_quality,
+                               debug=args.debug)
+        else:
+            logger.error("Invalid module. Choose 'lare', 'clipping', or 'fusion'.")
+            return
         test_data_loader = DataLoader(
             test_dataset, args.batch_size, shuffle=False,
             num_workers=args.num_workers, pin_memory=True, sampler=None)
         describe_dataloader(test_data_loader, title="Test DataLoader Summary")
     
-        auc, ap, best_acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = test_contrastive(model, test_data_loader, device)
+        auc, ap, best_acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = test_contrastive(model, test_data_loader,
+                                                                                                       args.module, device)
     
         # log metrics
         metrics = {

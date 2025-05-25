@@ -19,7 +19,7 @@ source activate fomo_gpu
 
 # global parameters
 MODULE=clipping
-CKPT_FOLDER="/home/scur0555/udit/logdir/clipping/train/1748123348" # path to the checkpoint file
+CKPT_FOLDER="/home/scur0555/udit/logdir/clipping/train/1748127143" # path to the checkpoint file
 RUN=clipping # wandb
 PROJECT=DF40-Test # wandb
 USER="udit"
