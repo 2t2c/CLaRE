@@ -168,7 +168,8 @@ def test(args):
     cfg.args = CN(vars(args))
     # change args
     cfg.dataset.subset = []
-    cfg.dataset.frame_num.test = args.test_ratio
+    if args.test_ratio:
+        cfg.dataset.frame_num.test = args.test_ratio
     # dump the config
     with open(f"{args.log_dir}/config.yaml", "w") as f:
         f.write(cfg.dump())

@@ -35,8 +35,8 @@ srun python "src/main.py" \
     --log_dir $HOME/${USER}/logdir/${MODULE}/train \
     --model "CLIP:ViT-L/14" \
     --clip_type "${MODULE}" \
-    --eval_every 200 \
-    --log_every 200 \
+    --eval_every 60 \
+    --log_every 60 \
     --batch_size 128 \
     --epochs 2 \
     --logging \

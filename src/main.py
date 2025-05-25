@@ -106,8 +106,8 @@ if __name__ == '__main__':
                         help="100, 90, 80, ... 30. Used to test robustness of our model. Does not apply if None")
     parser.add_argument('--gaussian_sigma', type=int, default=None,
                         help="0,1,2,3,4. Used to test robustness of the model. Does not apply if None")
-    parser.add_argument('--train_ratio', type=int, default=32, help='Total train frames per video')
-    parser.add_argument('--test_ratio', type=int, default=8, help='Total test frames per video')
+    parser.add_argument('--train_ratio', type=int, default=None, help='Total train frames per video')
+    parser.add_argument('--test_ratio', type=int, default=None, help='Total test frames per video')
     parser.add_argument('--debug', action='store_true', help='Debugging on few samples')
 
     # model configs
@@ -121,7 +121,6 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32, help='The training batch size over all gpus.')
     parser.add_argument("--log_dir", type=str, default='fomo_logdir')
     parser.add_argument("--num_classes", type=int, default=2, help='The class number of training dataset')
-    parser.add_argument('--val_ratio', type=float, default=0.005)
     parser.add_argument('--lr', type=float, default=1e-4, help='The initial learning rate.')
     parser.add_argument('--data_size', type=int, default=256, help='The image size for training.')
     parser.add_argument("--resume", type=str, default='')

@@ -32,12 +32,12 @@ srun python "src/main.py" \
     --mode "train" \
     --run_name "attnv2_${RUN}" \
     --project "${PROJECT}" \
-    --log_dir $HOME/${USER}/logdir/${MODULE}/${RUN} \
+    --log_dir $HOME/${USER}/logdir/${MODULE}/train \
     --model "CLIP:ViT-L/14" \
     --clip_type "${MODULE}" \
-    --eval_every 250 \
-    --log_every 250 \
+    --eval_every 50 \
+    --log_every 50 \
     --batch_size 64 \
-    --epochs 5 \
+    --epochs 2 \
     --logging \
     --device "cuda"

@@ -22,6 +22,7 @@ import torch
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 from torch.utils.data import Dataset
+# from landmark_extraction import extract_rois
 
 try:
     # Relative import for package use
@@ -193,6 +194,7 @@ class DF40(Dataset):
         self.jpeg_quality = jpeg_quality
         self.gaussian_sigma = gaussian_sigma
         self.subset = config.subset
+        self.rois = None
 
         # Set the dataset dictionary based on the mode
         if self.mode == 'train':
@@ -288,7 +290,7 @@ class DF40(Dataset):
         # Initialize the label and frame path lists
         label_list = []
         frame_path_list = []
-
+        unique_datasets = []
         # Record video name for video-level metrics
         video_name_list = []
 
@@ -430,11 +432,15 @@ class DF40(Dataset):
                     # video name save
                     video_name_list.extend(
                         [unique_video_name] * len(frame_paths))
+                        
+                unique_datasets.append(video_name)
 
         # Shuffle the label and frame path lists in the same order
         shuffled = list(zip(label_list, frame_path_list, video_name_list))
         random.shuffle(shuffled)
         label_list, frame_path_list, video_name_list = zip(*shuffled)
+        unique_subsets = set([name.split("_")[-1] for name in unique_datasets])
+        logger.info(f'Unique Subsets in "{self.mode}" mode: "{dataset_name}" - "{unique_subsets}"')
 
         return frame_path_list, label_list, video_name_list
 
@@ -771,6 +777,7 @@ class LARE(DF40):
             ], p=0.5),
             A.HorizontalFlip(p=0.5),
         ], p=1.0)
+        self.landmarks = config.landmarks
 
 
     def load_loss_maps(self, map_file):
@@ -828,6 +835,10 @@ class LARE(DF40):
 
             # Convert to numpy array for data augmentation
             image = np.array(image)
+            
+            # extract ROIs if needed
+            if self.landmarks:
+                self.rois = extract_rois(image, merge_landmarks=False)
 
             # Load the loss map
             try:

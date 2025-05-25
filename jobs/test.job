@@ -19,7 +19,7 @@ source activate fomo_gpu
 
 # global parameters
 MODULE=fusion
-CKPT_FOLDER="/home/scur0555/udit/logdir/fusion/train/1748129590" # path to the checkpoint file
+CKPT_FOLDER="/home/scur0555/udit/logdir/fusion/train/1748200916" # path to the checkpoint file
 RUN=fusion # wandb
 PROJECT=DF40-Test # wandb
 USER="udit"
