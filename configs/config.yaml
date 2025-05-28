@@ -9,6 +9,8 @@ log_dir: ~/fomo_logdir
 fusion:
   model:
     attention_type: "v2"
+    visual_prompt_learning: true
+    visual_n_ctx: 16
     
 # LaRE Settings
 # TODO
@@ -80,7 +82,7 @@ dataset:
   train_batchSize: 32   # training batch size
   test_batchSize: 32   # test batch size
   num_workers: 4   # number of data loading workers
-  frame_num: {'train': 8, 'test': 8}   # number of frames to use per video in training and testing
+  frame_num: {'train': 32, 'test': 8}   # number of frames to use per video in training and testing
   resolution: 224   # resolution of output image to network
   with_loss_map: true   # whether to include loss map information in the input
   with_mask: false   # whether to include mask information in the input

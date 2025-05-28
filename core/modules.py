@@ -9,11 +9,14 @@ from torchvision.ops import MultiScaleRoIAlign, roi_pool, roi_align
 import clip
 from clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
 
-def clip_encode_image(self, image):
+def clip_encode_image(self, image, visual_prompts=None):
     """
     Encodes the image using the visual CLIP model.
     """
-    return self.visual(image.type(self.dtype))
+    if visual_prompts is not None:
+        return self.visual(image.type(self.dtype), visual_prompts)
+    else:
+        return self.visual(image.type(self.dtype))
 
 
 def clip_resnet_forward(self, x):
@@ -40,7 +43,7 @@ def clip_resnet_forward(self, x):
 
     return x, x_l3
 
-def clip_vit_forward(self, x: torch.Tensor):
+def clip_vit_forward(self, x: torch.Tensor, visual_prompts: torch.Tensor = None):
     """
     Modified Forward pass through the CLIP ResNet model.
     :returns:
@@ -51,12 +54,30 @@ def clip_vit_forward(self, x: torch.Tensor):
     x = x.reshape(x.shape[0], x.shape[1], -1)  # (B, C, N)
     x = x.permute(0, 2, 1)  # (B, N, C)
 
+    if visual_prompts is not None:
+        batch_size = x.shape[0]
+        visual_prompts = visual_prompts.expand(batch_size, -1, -1)  # (B, num_prompts, C)
+        # prepend visual prompts (B, num_prompts, C)
+        num_prompts = visual_prompts.shape[1]
+        x = torch.cat([visual_prompts, x], dim=1)
+
     # CLS token
     cls_token = self.class_embedding.to(x.dtype)
     cls_tokens = cls_token.expand(x.shape[0], 1, -1)
     x = torch.cat([cls_tokens, x], dim=1)  # (B, N+1, C)
 
-    x = x + self.positional_embedding.to(x.dtype)
+    # adjust positional embeddings
+    pos_embed = self.positional_embedding.to(x.dtype)  # (1 + N, C)
+    if visual_prompts is not None:
+        cls_pos = pos_embed[:1]
+        patch_pos = pos_embed[1:]
+        prompt_pos = patch_pos.mean(dim=0, keepdim=True).repeat(num_prompts, 1)
+        prompt_pos += torch.randn_like(prompt_pos) * 0.02  # optional noise
+        extended_pos_embed = torch.cat([cls_pos, prompt_pos, patch_pos], dim=0)
+    else:
+        extended_pos_embed = pos_embed
+
+    x = x + extended_pos_embed.unsqueeze(0)
     x = self.ln_pre(x)
 
     x = x.permute(1, 0, 2)  # NLD -> LND
@@ -64,7 +85,7 @@ def clip_vit_forward(self, x: torch.Tensor):
     x = x.permute(1, 0, 2)  # LND -> NLD
 
     cls_feats = x[:, 0, :]  # (B, C)
-    patch_tokens = x[:, 1:, :]  # (B, N, C)
+    patch_tokens = x[:, 1 + (visual_prompts.shape[1] if visual_prompts is not None else 0):, :] # (B, N, C)
 
     # reshape patch tokens to 2D feature map (B, C, H, W)
     num_patches = patch_tokens.shape[1]
@@ -615,3 +636,46 @@ class PromptLearner(nn.Module):
             logger.error("Invalid 'class_token_position' defined!")
 
         return prompts
+
+
+class VisualPromptLearner(nn.Module):
+    def __init__(self,
+                 num_prompts: int = 4,   # number of learnable visual tokens
+                 prompt_dim: int = 1024,  # dimensionality of each prompt
+                 dropout: float = 0.1,
+                 condition_on_input: bool = False,  # If True, make prompts image-conditioned
+                 condition_dim: int = 512           # Dim of conditional features (e.g., RoI or landmark features)
+                 ):
+        super().__init__()
+        self.num_prompts = num_prompts
+        self.prompt_dim = prompt_dim
+        self.condition_on_input = condition_on_input
+
+        # learnable prompt tokens (if unconditional)
+        self.visual_prompts = nn.Parameter(torch.randn(1, num_prompts, prompt_dim))
+
+        # Optionally condition prompts on input features (e.g., facial landmarks)
+        if condition_on_input:
+            self.prompt_mlp = nn.Sequential(
+                nn.Linear(condition_dim, prompt_dim * num_prompts),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+            )
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, cond_feats: torch.Tensor = None):
+        """
+        :param:
+            cond_feats: [condition_dim], optional conditioning vector (e.g., RoI-pooled or landmarks)
+
+        :return:
+            [N+num_prompts, D] sequence with prepended visual prompts
+        """
+
+        if self.condition_on_input and cond_feats is not None:
+            vps = self.prompt_mlp(cond_feats)
+        else:
+            vps = self.visual_prompts
+
+        vps = self.dropout(vps)
+        return vps

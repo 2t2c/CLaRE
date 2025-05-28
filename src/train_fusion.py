@@ -569,6 +569,7 @@ def train(args):
     for name, param in model.named_parameters():
         if not any([
             "prompt_learner" in name,
+            "visual_prompt_learner" in name,
             "conv" in name,
             "conv_align" in name,
             "attn_pool" in name,

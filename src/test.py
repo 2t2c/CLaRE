@@ -214,63 +214,68 @@ def test(args):
     # start testing
     logger.info(f'Testing Datasets - "{args.test_datasets}"')
     for dataset in args.test_datasets:
-        # change dataset name
-        cfg.dataset.test_dataset = dataset
-        # load validation data
-        logger.info(f"Testing on '{dataset}'")
-        if args.module == "clipping":
-            test_dataset = CTD(config=cfg.dataset,
-                               mode="test",
-                               jpeg_quality=cfg.dataset.jpeg_quality,
-                               debug=args.debug)
-        elif args.module in ["fusion", "lare"]:
-            test_dataset = LARE(config=cfg.dataset,
-                               mode="test",
-                               jpeg_quality=cfg.dataset.jpeg_quality,
-                               debug=args.debug)
-        else:
-            logger.error("Invalid module. Choose 'lare', 'clipping', or 'fusion'.")
-            return
-        test_data_loader = DataLoader(
-            test_dataset, args.batch_size, shuffle=False,
-            num_workers=args.num_workers, pin_memory=True, sampler=None)
-        describe_dataloader(test_data_loader, title="Test DataLoader Summary")
-    
-        auc, ap, best_acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = test_contrastive(model, test_data_loader,
-                                                                                                       args.module, device)
-    
-        # log metrics
-        metrics = {
-            f"roc_auc/{dataset}": auc,
-            f"average_precision/{dataset}": ap,
-            f"accuracy/{dataset}": best_acc,
-            f"real_accuracy/{dataset}": r_acc,
-            f"fake_accuracy/{dataset}": f_acc,
-            f"raw_accuracy/{dataset}": raw_acc,
-            f"raw_real_accuracy/{dataset}": raw_r_acc,
-            f"raw_fake_accuracy/{dataset}": raw_f_acc,
-            f"best_thresh/{dataset}": best_thresh
-        }
-        display_metrics(metrics, title=f"{dataset} Test Metrics")
-        wandb.log(metrics)
-    
-        # export metrics
-        export_path = os.path.join(
-            args.log_dir, f"metrics.json")
-    
-        # read existing or create new
-        if os.path.exists(export_path):
-            with open(export_path, "r") as f:
-                all_metrics = json.load(f)
-        else:
-            all_metrics = {}
-    
-        # update by dataset_name key
-        all_metrics[dataset] = metrics
-    
-        # save updated
-        with open(export_path, "w") as f:
-            json.dump(all_metrics, f, indent=4)
+        try:
+            # change dataset name
+            cfg.dataset.subset = []
+            cfg.dataset.test_dataset = dataset + "_ff"
+            # cfg.dataset.test_dataset = dataset
+            # load validation data
+            logger.info(f"Testing on '{dataset}'")
+            if args.module == "clipping":
+                test_dataset = CTD(config=cfg.dataset,
+                                mode="test",
+                                jpeg_quality=cfg.dataset.jpeg_quality,
+                                debug=args.debug)
+            elif args.module in ["fusion", "lare"]:
+                test_dataset = LARE(config=cfg.dataset,
+                                mode="test",
+                                jpeg_quality=cfg.dataset.jpeg_quality,
+                                debug=args.debug)
+            else:
+                logger.error("Invalid module. Choose 'lare', 'clipping', or 'fusion'.")
+                return
+            test_data_loader = DataLoader(
+                test_dataset, args.batch_size, shuffle=False,
+                num_workers=args.num_workers, pin_memory=True, sampler=None)
+            describe_dataloader(test_data_loader, title="Test DataLoader Summary")
+        
+            auc, ap, best_acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = test_contrastive(model, test_data_loader,
+                                                                                                        args.module, device)
+        
+            # log metrics
+            metrics = {
+                f"roc_auc/{dataset}": auc,
+                f"average_precision/{dataset}": ap,
+                f"accuracy/{dataset}": best_acc,
+                f"real_accuracy/{dataset}": r_acc,
+                f"fake_accuracy/{dataset}": f_acc,
+                f"raw_accuracy/{dataset}": raw_acc,
+                f"raw_real_accuracy/{dataset}": raw_r_acc,
+                f"raw_fake_accuracy/{dataset}": raw_f_acc,
+                f"best_thresh/{dataset}": best_thresh
+            }
+            display_metrics(metrics, title=f"{dataset} Test Metrics")
+            wandb.log(metrics)
+        
+            # export metrics
+            export_path = os.path.join(
+                args.log_dir, f"metrics.json")
+        
+            # read existing or create new
+            if os.path.exists(export_path):
+                with open(export_path, "r") as f:
+                    all_metrics = json.load(f)
+            else:
+                all_metrics = {}
+        
+            # update by dataset_name key
+            all_metrics[dataset] = metrics
+        
+            # save updated
+            with open(export_path, "w") as f:
+                json.dump(all_metrics, f, indent=4)
+        except Exception as e:
+            logger.error(e)
     
     if args.logging:
         # exit session

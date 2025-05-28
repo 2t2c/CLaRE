@@ -321,6 +321,7 @@ class DF40(Dataset):
             dataset_name = 'FF-NT'
             cp = 'c40'
         # Get the information for the current dataset
+        logger.info(f"Config: {dataset_name}")
         for label in dataset_info[dataset_name]:
             sub_dataset_info = dataset_info[dataset_name][label][self.mode]
             # Special case for FaceForensics++ and DeepFakeDetection, choose the compression type
@@ -440,7 +441,7 @@ class DF40(Dataset):
         random.shuffle(shuffled)
         label_list, frame_path_list, video_name_list = zip(*shuffled)
         unique_subsets = set([name.split("_")[-1] for name in unique_datasets])
-        logger.info(f'Unique Subsets in "{self.mode}" mode: "{dataset_name}" - "{unique_subsets}"')
+        # logger.info(f'Unique Subsets in "{self.mode}" mode: "{dataset_name}" - "{unique_subsets}"')
 
         return frame_path_list, label_list, video_name_list
 

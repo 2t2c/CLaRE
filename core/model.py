@@ -15,7 +15,7 @@ from .modules import (clip_resnet_forward, clip_vit_forward, clip_encode_image,
                       ChannelAlignLayer, MultiHeadMapAttention, 
                       MultiHeadMapAttentionV2, ROIPooler)
 # CLIPping modules
-from .modules import (PromptLearner, TextEncoder)
+from .modules import (PromptLearner, TextEncoder, VisualPromptLearner)
 
 ### LaRE Models ###
 class CLIPModel(nn.Module):
@@ -182,6 +182,7 @@ class FusionCLIP(nn.Module):
         self.name = name
         self.roi_pooling = roi_pooling
         self.multiplier = 4 if roi_pooling else 3
+        self.cfg = cfg
 
         if pretrained:
             self.clip_model, _, _ = open_clip.create_model_and_transforms(name,
@@ -189,15 +190,25 @@ class FusionCLIP(nn.Module):
                                                                           device="cpu")
         else:
             self.clip_model, _ = clip.load(name, device="cpu")
+            
         # prompt learning and text encoder
-        if cfg.clipping.coop.prec in ["fp32", "amp"]:
+        if self.cfg.clipping.coop.prec in ["fp32", "amp"]:
             self.clip_model.float()
         self.classes = ["real", "fake"]
-        self.prompt_learner = PromptLearner(cfg.clipping, self.classes, self.clip_model)
+        self.prompt_learner = PromptLearner(self.cfg.clipping, self.classes, self.clip_model)
         self.tokenized_prompts = self.prompt_learner.tokenized_prompts
         self.text_encoder = TextEncoder(self.clip_model)
         self.logit_scale = self.clip_model.logit_scale
         self.dtype = self.clip_model.dtype
+
+        # visual prompt learning
+        self.visual_prompt_learner = VisualPromptLearner(
+            num_prompts=self.cfg.fusion.model.visual_n_ctx,
+            prompt_dim=1024,
+            dropout=0.1,
+            condition_on_input=False,
+            condition_dim=512
+        )
 
         # visual encoder and projection
         self.image_proj = nn.Linear(768, 1024) if 'ViT' in self.name else nn.Identity()
@@ -206,13 +217,13 @@ class FusionCLIP(nn.Module):
 
         if 'ViT' in self.name:
             self.clip_model.visual.forward = types.MethodType(clip_vit_forward, self.clip_model.visual)
-            if cfg.fusion.model.attention_type == 'v2':
+            if self.cfg.fusion.model.attention_type == 'v2':
                 self.attn_pool = MultiHeadMapAttentionV2(spacial_dim=16)
             else:
                 self.attn_pool = MultiHeadMapAttention(spacial_dim=16)
         else:
             self.clip_model.visual.forward = types.MethodType(clip_resnet_forward, self.clip_model.visual)
-            if cfg.fusion.model.attention_type == 'v2':
+            if self.cfg.fusion.model.attention_type == 'v2':
                 self.attn_pool = MultiHeadMapAttentionV2(spacial_dim=14)
             else:
                 self.attn_pool = MultiHeadMapAttention(spacial_dim=14)
@@ -227,11 +238,14 @@ class FusionCLIP(nn.Module):
             self.roi_pool = ROIPooler(output_size=(14, 14), align=True)
             self.pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # final projection layer
-        self.fc = nn.Linear(1024 * self.multiplier, len(self.classes))
-
+    # visual_embeddings[:, :self.visual_prompt_learner.num_prompts, :]
     def forward(self, image, loss_map, rois=None):
-        image_feats, block3_feats = self.clip_model.encode_image(image)
+        if self.cfg.fusion.model.visual_prompt_learning:
+            # extract patch embeddings first to generate visual prompts
+            visual_prompts = self.visual_prompt_learner()  # (N+num_prompts, D)
+            image_feats, block3_feats = self.clip_model.encode_image(image, visual_prompts)
+        else:
+            image_feats, block3_feats = self.clip_model.encode_image(image)
         image_feats = self.image_proj(image_feats)
 
         if 'ViT' in self.name:
