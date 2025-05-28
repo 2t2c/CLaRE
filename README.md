@@ -4,9 +4,6 @@ This project explores multimodal approaches for deepfake detection by integratin
 
 ## Project Structure
 
-* Modules
-  * [`lare/`](lare): Latent Reconstruction Error
-  * [`ufd/`](ufd): UniversalFakeDetect integration
 * General 
   * [`configs/`](configs): Configuration files for experiments
   * [`jobs/`](jobs): Job scripts for batch execution
