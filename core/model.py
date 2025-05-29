@@ -15,7 +15,7 @@ from .modules import (clip_resnet_forward, clip_vit_forward, clip_encode_image,
                       ChannelAlignLayer, MultiHeadMapAttention, 
                       MultiHeadMapAttentionV2, ROIPooler)
 # CLIPping modules
-from .modules import (PromptLearner, TextEncoder, VisualPromptLearner)
+from .modules import (CoOpPromptLearner, CoCoOpPromptLearner, TextEncoder, VisualPromptLearner)
 
 ### LaRE Models ###
 class CLIPModel(nn.Module):
@@ -140,16 +140,17 @@ class CustomCLIP(nn.Module):
     def __init__(self, cfg, name, pretrained=None):
         super().__init__()
         self.name = name
+        self.strategy = cfg.clipping.strategy
         if pretrained:
             self.clip_model, _, _ = open_clip.create_model_and_transforms(name,
                                                                           pretrained=pretrained,
                                                                           device="cpu")
         else:
             self.clip_model, _ = clip.load(name, device="cpu")
-        if cfg.clipping.coop.prec in ["fp32", "amp"]:
+        if cfg.clipping[self.strategy].prec in ["fp32", "amp"]:
             self.clip_model.float()
         self.classes = ["real", "fake"]
-        self.prompt_learner = PromptLearner(cfg.clipping, self.classes, self.clip_model)
+        self.prompt_learner = CoOpPromptLearner(cfg.clipping, self.classes, self.clip_model)
         self.tokenized_prompts = self.prompt_learner.tokenized_prompts
         self.image_encoder = self.clip_model.visual
         self.text_encoder = TextEncoder(self.clip_model)
@@ -183,6 +184,7 @@ class FusionCLIP(nn.Module):
         self.roi_pooling = roi_pooling
         self.multiplier = 4 if roi_pooling else 3
         self.cfg = cfg
+        self.strategy = cfg.clipping.strategy
 
         if pretrained:
             self.clip_model, _, _ = open_clip.create_model_and_transforms(name,
@@ -192,23 +194,27 @@ class FusionCLIP(nn.Module):
             self.clip_model, _ = clip.load(name, device="cpu")
             
         # prompt learning and text encoder
-        if self.cfg.clipping.coop.prec in ["fp32", "amp"]:
+        if self.cfg.clipping[self.strategy].prec in ["fp32", "amp"]:
             self.clip_model.float()
         self.classes = ["real", "fake"]
-        self.prompt_learner = PromptLearner(self.cfg.clipping, self.classes, self.clip_model)
+        if self.strategy == 'cocoop':
+            self.prompt_learner = CoCoOpPromptLearner(self.cfg.clipping, self.classes, self.clip_model)
+        else:
+            self.prompt_learner = CoOpPromptLearner(self.cfg.clipping, self.classes, self.clip_model)
         self.tokenized_prompts = self.prompt_learner.tokenized_prompts
         self.text_encoder = TextEncoder(self.clip_model)
         self.logit_scale = self.clip_model.logit_scale
         self.dtype = self.clip_model.dtype
 
-        # visual prompt learning
-        self.visual_prompt_learner = VisualPromptLearner(
-            num_prompts=self.cfg.fusion.model.visual_n_ctx,
-            prompt_dim=1024,
-            dropout=0.1,
-            condition_on_input=False,
-            condition_dim=512
-        )
+        if self.cfg.fusion.model.visual_prompt_learning:
+            # visual prompt learning
+            self.visual_prompt_learner = VisualPromptLearner(
+                num_prompts=self.cfg.fusion.model.visual_n_ctx,
+                prompt_dim=1024,
+                dropout=0.1,
+                condition_on_input=False,
+                condition_dim=512
+            )
 
         # visual encoder and projection
         self.image_proj = nn.Linear(768, 1024) if 'ViT' in self.name else nn.Identity()
@@ -238,7 +244,6 @@ class FusionCLIP(nn.Module):
             self.roi_pool = ROIPooler(output_size=(14, 14), align=True)
             self.pool = nn.AdaptiveAvgPool2d((1, 1))
 
-    # visual_embeddings[:, :self.visual_prompt_learner.num_prompts, :]
     def forward(self, image, loss_map, rois=None):
         if self.cfg.fusion.model.visual_prompt_learning:
             # extract patch embeddings first to generate visual prompts
@@ -283,14 +288,25 @@ class FusionCLIP(nn.Module):
             image_features = torch.cat([image_feats, pooled_block3_feats, channel_weighted_feats], dim=1) # (B, 3072)
 
         # text features
-        prompts = self.prompt_learner()
-        text_features = self.text_encoder(prompts, self.tokenized_prompts) # (B, 768)
-        text_features = self.text_proj(text_features) # (B, 3072)
+        if self.strategy == 'cocoop':
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+            prompts = self.prompt_learner(image_features)
+            logits = []
+            for pts_i, imf_i in zip(prompts, image_features):
+                text_features = self.text_encoder(pts_i, self.tokenized_prompts)
+                text_features = self.text_proj(text_features) # (B, 3072)
+                text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+                l_i = self.logit_scale.exp() * imf_i @ text_features.t()
+                logits.append(l_i)
+            logits = torch.stack(logits)
+        else:
+            prompts = self.prompt_learner()
+            text_features = self.text_encoder(prompts, self.tokenized_prompts) # (B, 768)
+            text_features = self.text_proj(text_features) # (B, 3072)
 
-        # normalize features
-        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-
-        logits = self.logit_scale.exp() * image_features @ text_features.t() # (B, 2)
+            # normalize features
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+            logits = self.logit_scale.exp() * image_features @ text_features.t() # (B, 2)
 
         return logits

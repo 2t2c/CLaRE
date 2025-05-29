@@ -343,6 +343,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
     start_time = time.time()
     epoch += 1
     pbar = tqdm(train_data_loader, desc=f"Epoch {epoch}", unit="batch")
+    strategy = cfg.clipping.strategy
 
     for batch in pbar:
         images, labels, loss_maps = batch
@@ -351,7 +352,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         loss_maps = loss_maps.to(device)
 
         # autograd
-        if cfg.clipping.coop.prec == "amp":
+        if cfg.clipping[strategy].prec == "amp":
             with autocast():
                 outputs = model(images, loss_maps)
                 loss = F.cross_entropy(outputs, labels)
@@ -605,7 +606,8 @@ def train(args):
     describe_dataloader(val_data_loader, title="Val DataLoader Summary")
 
     # setting optimizer, scaler, and scheduler
-    scaler = GradScaler() if cfg.clipping.coop.prec == "amp" else None
+    strategy = cfg.clipping.strategy
+    scaler = GradScaler() if cfg.clipping[strategy].prec == "amp" else None
     optimizer = build_optimizer(model.prompt_learner, cfg.clipping.optim)
     scheduler = build_lr_scheduler(optimizer, cfg.clipping.optim)
 

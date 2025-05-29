@@ -9,7 +9,7 @@ log_dir: ~/fomo_logdir
 fusion:
   model:
     attention_type: "v2"
-    visual_prompt_learning: true
+    visual_prompt_learning: false
     visual_n_ctx: 16
     
 # LaRE Settings
@@ -17,12 +17,18 @@ fusion:
 
 # CLPPing settings
 clipping:
+  strategy: cocoop
   coop:
     n_ctx: 16
     csc: false
     ctx_init: ""
     prec: "fp16"
     class_token_position: "end"
+  cocoop:
+    n_ctx: 16
+    csc: false
+    ctx_init: ""
+    prec: "fp16"
   dataloader:
     train:
       batch_size: 16

@@ -40,6 +40,8 @@ import logging
 # fetch logger
 logger = logging.getLogger("fomo_logger")
 
+# DF40 test only
+TEST_DATASETS = ["heygen", "MidJourney", "whichisreal", "stargan", "starganv2", "styleclip", "CollabDiff"]
 
 def compute_accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for
@@ -217,8 +219,10 @@ def test(args):
         try:
             # change dataset name
             cfg.dataset.subset = []
-            cfg.dataset.test_dataset = dataset + "_ff"
-            # cfg.dataset.test_dataset = dataset
+            if dataset not in TEST_DATASETS:
+                cfg.dataset.test_dataset = dataset + "_ff"
+            else:
+                cfg.dataset.test_dataset = dataset
             # load validation data
             logger.info(f"Testing on '{dataset}'")
             if args.module == "clipping":
