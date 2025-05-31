@@ -141,6 +141,7 @@ class CustomCLIP(nn.Module):
         super().__init__()
         self.name = name
         self.strategy = cfg.clipping.strategy
+        self.cfg = cfg
         if pretrained:
             self.clip_model, _, _ = open_clip.create_model_and_transforms(name,
                                                                           pretrained=pretrained,
@@ -150,7 +151,11 @@ class CustomCLIP(nn.Module):
         if cfg.clipping[self.strategy].prec in ["fp32", "amp"]:
             self.clip_model.float()
         self.classes = ["real", "fake"]
-        self.prompt_learner = CoOpPromptLearner(cfg.clipping, self.classes, self.clip_model)
+        if self.strategy == "coop":
+            self.prompt_learner = CoOpPromptLearner(self.cfg.clipping, self.classes, self.clip_model)
+        elif self.strategy == "cocoop":
+            self.prompt_learner = CoCoOpPromptLearner(self.cfg.clipping, self.classes, 
+                                                      self.clip_model, self.clip_model.visual.output_dim)
         self.tokenized_prompts = self.prompt_learner.tokenized_prompts
         self.image_encoder = self.clip_model.visual
         self.text_encoder = TextEncoder(self.clip_model)
@@ -158,17 +163,30 @@ class CustomCLIP(nn.Module):
         self.dtype = self.clip_model.dtype
 
     def forward(self, image):
-        image_features = self.image_encoder(image.type(self.dtype))
+        if self.strategy == 'cocoop':
+            image_features = self.image_encoder(image.type(self.dtype))
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+            prompts = self.prompt_learner(image_features)
+            logits = []
+            for pts_i, imf_i in zip(prompts, image_features):
+                # pts_i: (B, 77, 768) | imf_i: (768)
+                text_features = self.text_encoder(pts_i, self.tokenized_prompts) # (B, 768)
+                text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+                l_i = self.logit_scale.exp() * imf_i @ text_features.t()  # (2)
+                logits.append(l_i)
+            logits = torch.stack(logits)
+        elif self.strategy == 'coop':
+            image_features = self.image_encoder(image.type(self.dtype))
 
-        prompts = self.prompt_learner()
-        tokenized_prompts = self.tokenized_prompts
-        text_features = self.text_encoder(prompts, tokenized_prompts)
+            prompts = self.prompt_learner()
+            tokenized_prompts = self.tokenized_prompts
+            text_features = self.text_encoder(prompts, tokenized_prompts)
 
-        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
-        logit_scale = self.logit_scale.exp()
-        logits = logit_scale * image_features @ text_features.t()
+            logit_scale = self.logit_scale.exp()
+            logits = logit_scale * image_features @ text_features.t()
 
         return logits
 
@@ -293,10 +311,11 @@ class FusionCLIP(nn.Module):
             prompts = self.prompt_learner(image_features)
             logits = []
             for pts_i, imf_i in zip(prompts, image_features):
-                text_features = self.text_encoder(pts_i, self.tokenized_prompts)
+                # pts_i: (B, 77, 768) | imf_i: (768)
+                text_features = self.text_encoder(pts_i, self.tokenized_prompts) # (B, 768)
                 text_features = self.text_proj(text_features) # (B, 3072)
                 text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-                l_i = self.logit_scale.exp() * imf_i @ text_features.t()
+                l_i = self.logit_scale.exp() * imf_i @ text_features.t()  # (2)
                 logits.append(l_i)
             logits = torch.stack(logits)
         else:

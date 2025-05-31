@@ -821,6 +821,11 @@ class LARE(DF40):
                                                 f"{DATASET_DIR}/face_forensics/FaceForensics++")
                 image_path = image_path.replace("deepfakes_detection_datasets/Celeb-DF-v2",
                                                 f"{DATASET_DIR}/celeb_df/Celeb-DF-v2")
+                if "Celeb-DF-v2" not in image_path and "sd2.1" not in image_path:
+                    image_path = image_path.replace("Celeb-real", "Fake_from_Celeb-real", 1)
+                    image_path = image_path.replace("YouTube-real", "Fake_from_Youtube-real", 1)
+                filename = os.path.basename(image_path)
+                image_path = image_path.replace(filename, filename.replace("Fake_from_", "").replace("Youtube", "YouTube"))
                 image_path = image_path.replace("deepfakes_detection_datasets/DF40_train",
                                                 f"{DATASET_DIR}/df40/{self.mode}")
                 image_path = image_path.replace("deepfakes_detection_datasets/DF40",
@@ -831,7 +836,8 @@ class LARE(DF40):
                 image = self.load_rgb(image_path)
             except Exception as e:
                 # Skip this image and return the first one
-                logger.warning(f"Error loading image at index {index, image_path}: {e}")
+                # logger.info(image_path)
+                logger.error(f"Error loading image at index {index, image_path}: {e}")
                 return self.__getitem__(0)
 
             # Convert to numpy array for data augmentation
@@ -852,6 +858,15 @@ class LARE(DF40):
                 file = parts[-1].split(".")[0] + ".pt"
                 if "face_forensics" in image_path:
                     loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/face_forensics/{folder}/{file}"
+                elif "cdf" in image_path:
+                    loss_map_path = image_path.replace("test/", "loss_maps/").replace("train/", "loss_maps/")
+                    filename = os.path.basename(loss_map_path)
+                    if any(substring in image_path for substring in [
+                            "ddim", "DiT", "pixart", "rddm", "StyleGANXL", "sd2.1"
+                        ]):
+                        loss_map_path = loss_map_path.replace(filename, filename.split(".")[0] + ".pt")
+                elif "Celeb-DF-v2" in image_path:
+                    loss_map_path = f"{DATASET_DIR}/df40/loss_maps/celeb_df/{dataset}/{folder}/{file}"
                 else:
                     if any(substring in image_path for substring in [
                             "MidJourney", "whichisreal", "stargan", 
@@ -880,7 +895,8 @@ class LARE(DF40):
                 loss_map = torch.load(loss_map_path)
             except Exception as e:
                 # skip this loss map and return the first one
-                logger.warning(f"Error loading loss map at index {index, loss_map_path}: {e}")
+                # logger.info(image_path)
+                logger.error(f"Error loading loss map at index {index, loss_map_path}: {e}")
                 # return a zero tensor of expected shape as fallback
                 # loss_map = torch.zeros((4, 32, 32)) 
                 return self.__getitem__(0)

@@ -343,12 +343,13 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
     start_time = time.time()
     epoch += 1
     pbar = tqdm(train_data_loader, desc=f"Epoch {epoch}", unit="batch")
+    strategy = cfg.clipping.strategy
 
     for batch in pbar:
         images, labels = batch
         images, labels = images.to(device), labels.to(device)
         # autograd
-        if cfg.clipping.coop.prec == "amp":
+        if cfg.clipping[strategy].prec == "amp":
             with autocast():
                 outputs = model(images)
                 loss = F.cross_entropy(outputs, labels)
@@ -390,7 +391,7 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         # validation statistics
         if step % args.eval_every == 0:
             # save directly after training to avoid errors and wasted training
-            torch.save(model.state_dict(), os.path.join(args.log_dir, 'latest.pt'))
+            # torch.save(model.state_dict(), os.path.join(args.log_dir, 'latest.pt'))
             auc, ap, acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = validation_contrastive(model, val_data_loader,
                                                                                                  step, device)
             if auc > best_val:
@@ -535,6 +536,8 @@ def train(args):
             entity="FoMo",
             name=args.run_name + "/" + args.uid,
             config={
+                "uid": args.uid,
+                "strategy": cfg.clipping.strategy,
                 "architecture": args.model,
                 "clip_type": args.clip_type,
                 "batch_size": args.batch_size,
@@ -587,7 +590,8 @@ def train(args):
     describe_dataloader(val_data_loader, title="Val DataLoader Summary")
 
     # setting optimizer, scaler, and scheduler
-    scaler = GradScaler() if cfg.clipping.coop.prec == "amp" else None
+    strategy = cfg.clipping.strategy
+    scaler = GradScaler() if cfg.clipping[strategy].prec == "amp" else None
     optimizer = build_optimizer(model.prompt_learner, cfg.clipping.optim)
     scheduler = build_lr_scheduler(optimizer, cfg.clipping.optim)
 

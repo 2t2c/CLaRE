@@ -642,14 +642,15 @@ class CoOpPromptLearner(nn.Module):
     
 
 class CoCoOpPromptLearner(nn.Module):
-    def __init__(self, cfg, classnames, clip_model):
+    def __init__(self, cfg, classnames, clip_model, vis_dim=3072):
         super().__init__()
         self.num_classes = len(classnames)
         self.n_ctx = cfg.cocoop.n_ctx
         self.ctx_init = cfg.cocoop.ctx_init
         self.dtype = clip_model.dtype
-        self.ctx_dim = clip_model.ln_final.weight.shape[0]
-        self.vis_dim = 3072 # concatenated visual features dimension
+        self.ctx_dim = clip_model.ln_final.weight.shape[0] # (768)
+        # concatenated visual features dimension (3072) | vanilla (768)
+        self.vis_dim = vis_dim
         self.simple_tokenizer = _Tokenizer()
 
         if self.ctx_init:

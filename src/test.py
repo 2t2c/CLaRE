@@ -188,6 +188,7 @@ def test(args):
             config={
                 "uid": args.uid,
                 "train_uid": train_uid,
+                "strategy": cfg.clipping.strategy,
                 "architecture": args.model,
                 "clip_type": args.clip_type,
                 "batch_size": args.batch_size,
@@ -205,7 +206,7 @@ def test(args):
     model = get_model(name=args.model, clip_type=args.clip_type, cfg=cfg)
     device = get_device(args.device)
     model.to(device)
-    # load model
+    # load model checkpoint
     checkpoint_path = os.path.join(args.checkpoint, "best.pth")
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint["state_dict"])
@@ -220,7 +221,8 @@ def test(args):
             # change dataset name
             cfg.dataset.subset = []
             if dataset not in TEST_DATASETS:
-                cfg.dataset.test_dataset = dataset + "_ff"
+                dataset = dataset + "_cdf"
+                cfg.dataset.test_dataset = dataset
             else:
                 cfg.dataset.test_dataset = dataset
             # load validation data
