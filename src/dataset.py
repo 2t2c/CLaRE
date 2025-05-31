@@ -887,9 +887,12 @@ class LARE(DF40):
                             loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/CollabDiff/{prefix}_{file}.pt"
                         else:
                             loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{prefix}_{file}"
-                    elif "heygen" in image_path:
+                    elif "heygen" in image_path or "deepfacelab" in image_path:
                         dataset, folder, subfolder, file = parts[-4:]
-                        loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{subfolder}/{file}.pt"
+                        if "heygen" in image_path:
+                            loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{subfolder}/{file}.pt"
+                        else:
+                            loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{subfolder}/{file}"
                     else:
                         loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{file}"
                 loss_map = torch.load(loss_map_path)

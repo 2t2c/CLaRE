@@ -307,8 +307,8 @@ class FusionCLIP(nn.Module):
 
         # text features
         if self.strategy == 'cocoop':
-            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-            prompts = self.prompt_learner(image_features)
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True) # (B, 3072)
+            prompts = self.prompt_learner(image_features) # (B, 768)
             logits = []
             for pts_i, imf_i in zip(prompts, image_features):
                 # pts_i: (B, 77, 768) | imf_i: (768)

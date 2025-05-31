@@ -41,7 +41,7 @@ import logging
 logger = logging.getLogger("fomo_logger")
 
 # DF40 test only
-TEST_DATASETS = ["heygen", "MidJourney", "whichisreal", "stargan", "starganv2", "styleclip", "CollabDiff"]
+TEST_DATASETS = ["heygen", "MidJourney", "whichisreal", "stargan", "starganv2", "styleclip", "CollabDiff", "deepfacelab"]
 
 def compute_accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for
