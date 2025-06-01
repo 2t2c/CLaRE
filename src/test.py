@@ -181,26 +181,31 @@ def test(args):
     # setup wandb
     if args.logging:
         train_uid = args.checkpoint.split("/")[-1]
-        wandb.init(
-            project=args.project,
-            entity="FoMo",
-            name=args.run_name + "/" + train_uid,
-            config={
-                "uid": args.uid,
-                "train_uid": train_uid,
-                "strategy": cfg.clipping.strategy,
-                "architecture": args.model,
-                "clip_type": args.clip_type,
-                "batch_size": args.batch_size,
-                "log_dir": args.log_dir,
-                "seed": args.seed,
-                "mode": args.mode,
-                "device": args.device,
-                "test_datasets": args.test_datasets,
-                "test_ratio": cfg.dataset.frame_num.test,
-                "checkpoint": args.checkpoint,
-            },
-            settings=wandb.Settings(_service_wait=300, init_timeout=120))
+        wandb_kwargs = {
+                "project": args.project,
+                "entity": "FoMo",
+                "name": args.run_name + "/" + train_uid,
+                "config": {
+                    "uid": args.uid,
+                    "train_uid": train_uid,
+                    "strategy": cfg.clipping.strategy,
+                    "architecture": args.model,
+                    "clip_type": args.clip_type,
+                    "batch_size": args.batch_size,
+                    "log_dir": args.log_dir,
+                    "seed": args.seed,
+                    "mode": args.mode,
+                    "device": args.device,
+                    "test_datasets": args.test_datasets,
+                    "test_ratio": cfg.dataset.frame_num.test,
+                    "checkpoint": args.checkpoint,
+                },
+                "settings": wandb.Settings(_service_wait=300, init_timeout=120),
+            }
+        if args.run_id:
+            wandb_kwargs["id"] = args.run_id
+            wandb_kwargs["resume"] = "must"
+        wandb.init(**wandb_kwargs)
 
     # load model
     model = get_model(name=args.model, clip_type=args.clip_type, cfg=cfg)
@@ -209,7 +214,10 @@ def test(args):
     # load model checkpoint
     checkpoint_path = os.path.join(args.checkpoint, "best.pth")
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint["state_dict"])
+    try:
+        model.load_state_dict(checkpoint["state_dict"])
+    except:
+        model.load_state_dict(checkpoint)
     logger.info(f"Model loaded from checkpoint - {args.checkpoint}")
     display_model_summary(model, input_shape=(1, 3, cfg.dataset.resolution,
                                               cfg.dataset.resolution), device=device)

@@ -83,6 +83,8 @@ if __name__ == '__main__':
                         default=50, help='logging step')
     parser.add_argument('--logging', action='store_true',
                         help='online logging')
+    parser.add_argument('--run_id', type=str, default=None,
+                        help='w&b run id for resuming')
 
     # training/testing config args
     parser.add_argument('--mode', type=str,

@@ -892,6 +892,7 @@ class LARE(DF40):
                         if "heygen" in image_path:
                             loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{subfolder}/{file}.pt"
                         else:
+                            file = parts[-1].split(".")[0] + ".pt"
                             loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{subfolder}/{file}"
                     else:
                         loss_map_path = f"{HOME_DATASET_DIR}/df40/loss_maps/{dataset}/{folder}/{file}"
