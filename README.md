@@ -1,4 +1,4 @@
-# Leveraging CLIP-like Models for Deepfake Detection
+# CLaRE: CLIP with Latent Reconstruction Errors for Generated Face Detection
 
 This project explores multimodal approaches for deepfake detection by integrating visual and textual features using recent methods – LaRE [2], CLIPping [3], and MLP/Attention-based fusion architectures.
 
@@ -43,10 +43,9 @@ The approach integrates CoOp/CoCoOp with CLIP, and fuses visual (ViT) and textua
 
 2. **Training Pipeline**
 
-   * Train **CoOp** on DF40 train split
+   * Train **CoOp\CoCoOp** on DF40 train split
    * Fuse with **LaRE**, then retrain
-     * Enhancement 1: MLP integration
-     * Enhancement 2: use RoI pooling
+
 3. **Evaluation Pipeline**
    * Evaluate on DF40 test (8 datasets)
      - heygen
@@ -55,34 +54,14 @@ The approach integrates CoOp/CoCoOp with CLIP, and fuses visual (ViT) and textua
      - stargan
      - starganv2
      - styleclip
-     - e4e
-     - CollabDif
+     - DeepFaceLab
+     - CollabDiff
 
 ### Architecture Components
 
 * **CLIP**: Base feature extractor (image + text embeddings)
 * **CoOp/CoCoOp**: Learnable prompts for classification
 * **LaRE**: Region-level enhancement (with optional RoI pooling, K/Q/V attention etc.)
-
-**Diagram:**
-
-```
-Text (Coop/CoCoOp) ────> [Real/Fake] ────────────┐
-                                                 │
-ViT Image ───────────────> Img Feat. ───(x)─> Combine ─> Output
-    │                                    │
-LaRE ──> Stage 1 (*) ──> Stage 2 (**) ───┘
-
-(*) Stage 1:
-    - Extracting LaRE representations
-(**) Stage 2:
-    - MLP Layer
-    - LaRE Original Configuration
-    - LaRE with RoI Pooling
-(x) Shape Matching:
-    - Concatenate
-    - Summing
-```
 
 
 ## References
