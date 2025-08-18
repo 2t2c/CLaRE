@@ -4,6 +4,7 @@
 
 # wandb logs
 wandb/
+logs/
 # snellius outputs
 tmp/
 

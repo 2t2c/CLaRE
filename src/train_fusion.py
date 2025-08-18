@@ -395,8 +395,10 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         if step % args.eval_every == 0:
             # save directly after training to avoid errors and wasted training
             # torch.save(model.state_dict(), os.path.join(args.log_dir, 'latest.pt'))
-            auc, ap, acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = validation_contrastive(model, val_data_loader,
-                                                                                                 step, device)
+            auc, ap, acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = validation_contrastive(model,
+                                                                                                            val_data_loader,
+                                                                                                            step,
+                                                                                                            device)
             if auc > best_val:
                 best_val = auc
                 best_step = step
@@ -588,9 +590,9 @@ def train(args):
 
     # load training data
     train_dataset = LARE(config=cfg.dataset,
-                        mode="train",
-                        jpeg_quality=cfg.dataset.jpeg_quality,
-                        debug=args.debug)
+                         mode="train",
+                         jpeg_quality=cfg.dataset.jpeg_quality,
+                         debug=args.debug)
     train_data_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.num_workers, pin_memory=True, sampler=None)
@@ -598,9 +600,9 @@ def train(args):
 
     # load validation data
     val_dataset = LARE(config=cfg.dataset,
-                      mode="test",
-                      jpeg_quality=cfg.dataset.jpeg_quality,
-                      debug=args.debug)
+                       mode="test",
+                       jpeg_quality=cfg.dataset.jpeg_quality,
+                       debug=args.debug)
     val_data_loader = DataLoader(
         val_dataset, args.batch_size, shuffle=False,
         num_workers=args.num_workers, pin_memory=True, sampler=None)

@@ -36,12 +36,13 @@ from dataset import describe_dataloader, CTD, LARE
 from yacs.config import CfgNode as CN
 import logging
 
-
 # fetch logger
 logger = logging.getLogger("fomo_logger")
 
 # DF40 test only
-TEST_DATASETS = ["heygen", "MidJourney", "whichisreal", "stargan", "starganv2", "styleclip", "CollabDiff", "deepfacelab"]
+TEST_DATASETS = ["heygen", "MidJourney", "whichisreal", "stargan", "starganv2", "styleclip", "CollabDiff",
+                 "deepfacelab"]
+
 
 def compute_accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for
@@ -182,26 +183,26 @@ def test(args):
     if args.logging:
         train_uid = args.checkpoint.split("/")[-1]
         wandb_kwargs = {
-                "project": args.project,
-                "entity": "FoMo",
-                "name": args.run_name + "/" + train_uid,
-                "config": {
-                    "uid": args.uid,
-                    "train_uid": train_uid,
-                    "strategy": cfg.clipping.strategy,
-                    "architecture": args.model,
-                    "clip_type": args.clip_type,
-                    "batch_size": args.batch_size,
-                    "log_dir": args.log_dir,
-                    "seed": args.seed,
-                    "mode": args.mode,
-                    "device": args.device,
-                    "test_datasets": args.test_datasets,
-                    "test_ratio": cfg.dataset.frame_num.test,
-                    "checkpoint": args.checkpoint,
-                },
-                "settings": wandb.Settings(_service_wait=300, init_timeout=120),
-            }
+            "project": args.project,
+            "entity": "FoMo",
+            "name": args.run_name + "/" + train_uid,
+            "config": {
+                "uid": args.uid,
+                "train_uid": train_uid,
+                "strategy": cfg.clipping.strategy,
+                "architecture": args.model,
+                "clip_type": args.clip_type,
+                "batch_size": args.batch_size,
+                "log_dir": args.log_dir,
+                "seed": args.seed,
+                "mode": args.mode,
+                "device": args.device,
+                "test_datasets": args.test_datasets,
+                "test_ratio": cfg.dataset.frame_num.test,
+                "checkpoint": args.checkpoint,
+            },
+            "settings": wandb.Settings(_service_wait=300, init_timeout=120),
+        }
         if args.run_id:
             wandb_kwargs["id"] = args.run_id
             wandb_kwargs["resume"] = "must"
@@ -237,14 +238,14 @@ def test(args):
             logger.info(f"Testing on '{dataset}'")
             if args.module == "clipping":
                 test_dataset = CTD(config=cfg.dataset,
-                                mode="test",
-                                jpeg_quality=cfg.dataset.jpeg_quality,
-                                debug=args.debug)
+                                   mode="test",
+                                   jpeg_quality=cfg.dataset.jpeg_quality,
+                                   debug=args.debug)
             elif args.module in ["fusion", "lare"]:
                 test_dataset = LARE(config=cfg.dataset,
-                                mode="test",
-                                jpeg_quality=cfg.dataset.jpeg_quality,
-                                debug=args.debug)
+                                    mode="test",
+                                    jpeg_quality=cfg.dataset.jpeg_quality,
+                                    debug=args.debug)
             else:
                 logger.error("Invalid module. Choose 'lare', 'clipping', or 'fusion'.")
                 return
@@ -252,10 +253,12 @@ def test(args):
                 test_dataset, args.batch_size, shuffle=False,
                 num_workers=args.num_workers, pin_memory=True, sampler=None)
             describe_dataloader(test_data_loader, title="Test DataLoader Summary")
-        
-            auc, ap, best_acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = test_contrastive(model, test_data_loader,
-                                                                                                        args.module, device)
-        
+
+            auc, ap, best_acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = test_contrastive(model,
+                                                                                                           test_data_loader,
+                                                                                                           args.module,
+                                                                                                           device)
+
             # log metrics
             metrics = {
                 f"roc_auc/{dataset}": auc,
@@ -270,27 +273,27 @@ def test(args):
             }
             display_metrics(metrics, title=f"{dataset} Test Metrics")
             wandb.log(metrics)
-        
+
             # export metrics
             export_path = os.path.join(
                 args.log_dir, f"metrics.json")
-        
+
             # read existing or create new
             if os.path.exists(export_path):
                 with open(export_path, "r") as f:
                     all_metrics = json.load(f)
             else:
                 all_metrics = {}
-        
+
             # update by dataset_name key
             all_metrics[dataset] = metrics
-        
+
             # save updated
             with open(export_path, "w") as f:
                 json.dump(all_metrics, f, indent=4)
         except Exception as e:
             logger.error(e)
-    
+
     if args.logging:
         # exit session
         wandb.finish()

@@ -8,7 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --time=12:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=./snellius_outputs/testing/test_output_%A.out
+#SBATCH --output=./outputs/testing/test_output_%A.out
 
 module purge
 module load 2024
@@ -19,10 +19,10 @@ source activate fomo_gpu
 
 # global parameters
 MODULE=fusion
-CKPT_FOLDER="/home/scur0555/udit/logdir/fusion/train/1748200916" # path to the checkpoint file
+CKPT_FOLDER="path/to/checkpoint.pth" # path to the checkpoint file
 RUN=fusion # wandb
 PROJECT=DF40-Test # wandb
-USER="udit"
+USER="root" # change this to your username
 # change this based on your directory structure
 DIR=$HOME/$USER/FoMo/
 cd $DIR

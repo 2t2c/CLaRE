@@ -1,4 +1,4 @@
-name: fomo
+name: clare
 channels:
   - pytorch
   - nvidia

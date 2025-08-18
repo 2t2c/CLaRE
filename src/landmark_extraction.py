@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import torch
 
+
 def extract_rois(image, merge_landmarks=False):
     """
     Extracts rois from the image based on facial landmarks.

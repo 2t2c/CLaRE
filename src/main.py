@@ -9,6 +9,7 @@ import time
 from utils import set_seed, display_args
 import logging
 from rich.logging import RichHandler
+
 sys.path.append(os.path.abspath(os.path.join("..")))
 from train_lare import train as train_lare
 from train_clipping import train as train_clipping
@@ -61,6 +62,7 @@ def main(args):
     else:
         logger.error("Invalid mode. Choose 'train', 'test', 'both'.")
     logger.info(f"Session Completed with UID '{uid}' and Mode '{mode}'")
+
 
 if __name__ == '__main__':
     # argparse
@@ -121,7 +123,7 @@ if __name__ == '__main__':
     # training hyperparameters
     parser.add_argument('--epochs', type=int, default=100, help='Total training epochs.')
     parser.add_argument('--batch_size', type=int, default=32, help='The training batch size over all gpus.')
-    parser.add_argument("--log_dir", type=str, default='fomo_logdir')
+    parser.add_argument("--log_dir", type=str, default='logdir')
     parser.add_argument("--num_classes", type=int, default=2, help='The class number of training dataset')
     parser.add_argument('--lr', type=float, default=1e-4, help='The initial learning rate.')
     parser.add_argument('--data_size', type=int, default=256, help='The image size for training.')

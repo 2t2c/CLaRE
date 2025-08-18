@@ -6,7 +6,7 @@ module load p7zip/17.05-GCCcore-13.3.0
 
 # Set root path
 #ROOT="$TMPDIR/datasets" # does not work with validate.job due to mkdir dynamics
-ROOT="/scratch-shared/scur0555/datasets" # working
+ROOT="./datasets" # working
 mkdir -p "$ROOT/cnn_detection/train" "$ROOT/cnn_detection/val" "$ROOT/cnn_detection/test"
 
 
@@ -49,7 +49,7 @@ unzip diffusion_datasets.zip
 rm diffusion_datasets.zip
 
 
-# Datset 3: DF40 (test set, 40 .zip files in total)
+# Dataset 3: DF40 (test set, 40 .zip files in total)
 cd "$ROOT" || exit 1
 mkdir -p "$ROOT/df40/train" "$ROOT/df40/val" "$ROOT/df40/test"
 cd "$ROOT/df40/test" || exit 1
@@ -85,7 +85,7 @@ done
 # e4e.zip -> 7z x -y file.zip
 
 
-# Datset 3: DF40 (train set, 31 .zip files in total)
+# Dataset 3: DF40 (train set, 31 .zip files in total)
 cd "$ROOT/df40/train" || exit 1
 FOLDERID=1U8meBbqVvmUkc5GD0jxct6xe6Gwk9wKD
 # follow this: https://stackoverflow.com/questions/65312867/how-to-download-large-file-from-google-drive-from-terminal-gdown-doesnt-work
@@ -135,7 +135,7 @@ while IFS=$'\t' read -r FILEID FILENAME; do
 done
 
 
-# Datset 4: FaceForensics++
+# Dataset 4: FaceForensics++
 cd "$ROOT" || exit 1
 mkdir -p "$ROOT/face_forensics"
 cd "$ROOT/face_forensics" || exit 1
@@ -144,7 +144,7 @@ gdown https://drive.google.com/uc?id=$FILEID
 unzip FaceForensics++_real_data_for_DF40.zip
 
 
-# Datset 5: Celeb-DF
+# Dataset 5: Celeb-DF
 cd "$ROOT" || exit 1
 mkdir -p "$ROOT/celeb_df"
 cd "$ROOT/celeb_df" || exit 1

@@ -3,7 +3,7 @@
 mode: train
 
 # log dir 
-log_dir: ~/fomo_logdir
+log_dir: ~/logdir
 
 # Fusion Settings
 fusion:
@@ -80,7 +80,7 @@ dataset:
   landmarks: false  # whether to use facial landmarks in the dataset
   # subset: []
   subset: ["pixart", "SiT", "VQGAN", "StyleGANXL"]
-  configs_folder: '/scratch-shared/scur0555/datasets/df40/configs'
+  configs_folder: './datasets/df40/configs'
 
   jpeg_quality: 95  # .png to .jpeg quality for training and testing
 

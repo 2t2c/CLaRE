@@ -15,5 +15,5 @@ module load 2024
 module load 2023
 module load Anaconda3/2023.07-2
 
-cd $HOME/udit/FoMo/
+cd $HOME
 conda env create -f environment.yaml

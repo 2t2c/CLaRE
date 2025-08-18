@@ -392,8 +392,10 @@ def train_one_epoch(model, train_data_loader, val_data_loader,
         if step % args.eval_every == 0:
             # save directly after training to avoid errors and wasted training
             # torch.save(model.state_dict(), os.path.join(args.log_dir, 'latest.pt'))
-            auc, ap, acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = validation_contrastive(model, val_data_loader,
-                                                                                                 step, device)
+            auc, ap, acc, r_acc, f_acc, raw_acc, raw_r_acc, raw_f_acc, best_thresh = validation_contrastive(model,
+                                                                                                            val_data_loader,
+                                                                                                            step,
+                                                                                                            device)
             if auc > best_val:
                 best_val = auc
                 best_step = step

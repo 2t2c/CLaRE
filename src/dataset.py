@@ -22,6 +22,7 @@ import torch
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 from torch.utils.data import Dataset
+
 # from landmark_extraction import extract_rois
 
 try:
@@ -57,7 +58,8 @@ FFpp_pool = ['FaceForensics++', 'FaceShifter',
 
 # dataset directory
 DATASET_DIR = "/scratch-shared/scur0555/datasets"
-HOME_DATASET_DIR= "/home/scur0555/datasets"
+HOME_DATASET_DIR = "/home/scur0555/datasets"
+
 
 class UFD(Dataset):
     def __init__(self, real_path,
@@ -220,7 +222,7 @@ class DF40(Dataset):
         self.image_list, self.label_list = image_list, label_list
 
         # for debugging
-        if self.debug: 
+        if self.debug:
             self.image_list = self.image_list[: min(5_000, len(self.image_list))]
             self.label_list = self.label_list[: min(5_000, len(self.image_list))]
 
@@ -433,7 +435,7 @@ class DF40(Dataset):
                     # video name save
                     video_name_list.extend(
                         [unique_video_name] * len(frame_paths))
-                        
+
                 unique_datasets.append(video_name)
 
         # Shuffle the label and frame path lists in the same order
@@ -761,17 +763,17 @@ class LARE(DF40):
                  img_size=224, jpeg_quality=None,
                  gaussian_sigma=None, debug=False):
         # initialize DF40 first (inherits data loading, image_list, label_list, etc.)
-        super().__init__(config, jpeg_quality=jpeg_quality, 
-                        gaussian_sigma=gaussian_sigma, debug=debug,
-                        mode=mode)
+        super().__init__(config, jpeg_quality=jpeg_quality,
+                         gaussian_sigma=gaussian_sigma, debug=debug,
+                         mode=mode)
         self.img_size = img_size
         self.train_list = []
         self.transform = A.Compose([
             # A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
             # A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
             A.RandomResizedCrop(size=(self.img_size, self.img_size),
-                                      scale=(0.8, 1.0),
-                                      ratio=(0.95, 1.05), p=1.0),
+                                scale=(0.8, 1.0),
+                                ratio=(0.95, 1.05), p=1.0),
             A.OneOf([
                 A.GaussianBlur(blur_limit=(3, 7), p=1.0),
                 A.GaussNoise(p=1.0),
@@ -779,7 +781,6 @@ class LARE(DF40):
             A.HorizontalFlip(p=0.5),
         ], p=1.0)
         self.landmarks = config.landmarks
-
 
     def load_loss_maps(self, map_file):
         map_paths = []
@@ -792,7 +793,8 @@ class LARE(DF40):
         return map_paths
 
     def __len__(self):
-        assert len(self.image_list) == len(self.label_list), f'Number of images ({len(self.image_list)}) and labels ({len(self.label_list)}) are not equal'
+        assert len(self.image_list) == len(
+            self.label_list), f'Number of images ({len(self.image_list)}) and labels ({len(self.label_list)}) are not equal'
         # assert len(self.image_list) == len(self.map_paths), f'Number of images ({len(self.image_list)}) and loss maps ({len(self.map_paths)}) are not equal'
         return len(self.image_list)
 
@@ -825,7 +827,8 @@ class LARE(DF40):
                     image_path = image_path.replace("Celeb-real", "Fake_from_Celeb-real", 1)
                     image_path = image_path.replace("YouTube-real", "Fake_from_Youtube-real", 1)
                 filename = os.path.basename(image_path)
-                image_path = image_path.replace(filename, filename.replace("Fake_from_", "").replace("Youtube", "YouTube"))
+                image_path = image_path.replace(filename,
+                                                filename.replace("Fake_from_", "").replace("Youtube", "YouTube"))
                 image_path = image_path.replace("deepfakes_detection_datasets/DF40_train",
                                                 f"{DATASET_DIR}/df40/{self.mode}")
                 image_path = image_path.replace("deepfakes_detection_datasets/DF40",
@@ -842,7 +845,7 @@ class LARE(DF40):
 
             # Convert to numpy array for data augmentation
             image = np.array(image)
-            
+
             # extract ROIs if needed
             if self.landmarks:
                 self.rois = extract_rois(image, merge_landmarks=False)
@@ -853,7 +856,7 @@ class LARE(DF40):
                 image_path = image_path.replace("/frames", "")
                 image_path = image_path.replace("/ff", "")
                 parts = image_path.split("/")
-                dataset = parts[-3] # VQGAN
+                dataset = parts[-3]  # VQGAN
                 folder = parts[-2]  # '335'
                 file = parts[-1].split(".")[0] + ".pt"
                 if "face_forensics" in image_path:
@@ -862,16 +865,16 @@ class LARE(DF40):
                     loss_map_path = image_path.replace("test/", "loss_maps/").replace("train/", "loss_maps/")
                     filename = os.path.basename(loss_map_path)
                     if any(substring in image_path for substring in [
-                            "ddim", "DiT", "pixart", "rddm", "StyleGANXL", "sd2.1"
-                        ]):
+                        "ddim", "DiT", "pixart", "rddm", "StyleGANXL", "sd2.1"
+                    ]):
                         loss_map_path = loss_map_path.replace(filename, filename.split(".")[0] + ".pt")
                 elif "Celeb-DF-v2" in image_path:
                     loss_map_path = f"{DATASET_DIR}/df40/loss_maps/celeb_df/{dataset}/{folder}/{file}"
                 else:
                     if any(substring in image_path for substring in [
-                            "MidJourney", "whichisreal", "stargan", 
-                            "starganv2", "styleclip", "CollabDiff"
-                        ]):
+                        "MidJourney", "whichisreal", "stargan",
+                        "starganv2", "styleclip", "CollabDiff"
+                    ]):
                         image_path = image_path.replace("/test", "")
                         parts = image_path.split("/")
                         dataset = parts[-2]
@@ -929,7 +932,6 @@ class LARE(DF40):
 
         return image_tensors, label, loss_map_tensors
 
-
     @staticmethod
     def collate_fn(batch):
         images, labels, loss_maps = zip(*batch)
@@ -951,8 +953,8 @@ class CTD(DF40):
                  gaussian_sigma=None, debug=False):
         # initialize DF40 first (inherits data loading, image_list, label_list, etc.)
         super().__init__(config, jpeg_quality=jpeg_quality,
-                        gaussian_sigma=gaussian_sigma, debug=debug,
-                        mode=mode)
+                         gaussian_sigma=gaussian_sigma, debug=debug,
+                         mode=mode)
         self.img_size = img_size
         self.train_list = []
         self.anchor = False
@@ -960,8 +962,8 @@ class CTD(DF40):
             # A.PadIfNeeded(min_height=self.img_size, min_width=self.img_size, p=1.0),
             # A.RandomCrop(height=self.img_size, width=self.img_size, p=1.0),
             A.RandomResizedCrop(size=(self.img_size, self.img_size),
-                                      scale=(0.8, 1.0),
-                                      ratio=(0.95, 1.05), p=1.0),
+                                scale=(0.8, 1.0),
+                                ratio=(0.95, 1.05), p=1.0),
             A.OneOf([
                 A.GaussianBlur(blur_limit=(3, 7), p=1.0),
                 A.GaussNoise(p=1.0),
@@ -1033,7 +1035,6 @@ class CTD(DF40):
             image_tensors = image_tensors[0]
 
         return image_tensors, label
-
 
     @staticmethod
     def collate_fn(batch):
@@ -1185,8 +1186,8 @@ if __name__ == "__main__":
             config = yaml.safe_load(f)
         if args.df40_name is not None:
             config[f'{args.df40_mode}_dataset'] = args.df40_name
-        dataset = LARE(config=config, 
-                       mode=args.df40_mode, 
+        dataset = LARE(config=config,
+                       mode=args.df40_mode,
                        jpeg_quality=args.jpeg_quality)
         loader = torch.utils.data.DataLoader(
             dataset=dataset,

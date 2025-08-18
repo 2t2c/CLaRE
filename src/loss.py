@@ -6,6 +6,7 @@ Module containing losses for training the model.
 import torch
 import torch.nn as nn
 
+
 class LabelSmoothingLoss(nn.Module):
     def __init__(self, classes, smoothing=0.0, dim=-1, weight=None):
         """if smoothing == 0, it's one-hot method

@@ -4,6 +4,7 @@ Script to train the LaRE architecture pipeline.
 
 import os
 import sys
+
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core import get_model
@@ -62,7 +63,7 @@ def get_lr(optimizer):
         return param_group['lr']
 
 
-def train_one_epoch(model, train_data_loader, val_data_loader, 
+def train_one_epoch(model, train_data_loader, val_data_loader,
                     optimizer, epoch,
                     loss_meter, auc_meter, args, device,
                     step):
@@ -246,7 +247,7 @@ def train(args):
         wandb.init(
             project=args.project,
             entity="FoMo",
-            name=args.run_name+ "/" + args.uid,
+            name=args.run_name + "/" + args.uid,
             config={
                 "architecture": args.model,
                 "clip_type": args.clip_type,
@@ -274,9 +275,9 @@ def train(args):
 
     # load training data
     train_dataset = LARE(config=cfg,
-                       mode="train",
-                       jpeg_quality=args.jpeg_quality,
-                       debug=args.debug)
+                         mode="train",
+                         jpeg_quality=args.jpeg_quality,
+                         debug=args.debug)
     train_data_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=True, sampler=None)
@@ -284,7 +285,7 @@ def train(args):
 
     # load validation data
     val_dataset = LARE(config=cfg,
-                       mode="test", 
+                       mode="test",
                        jpeg_quality=args.jpeg_quality,
                        debug=args.debug)
     val_data_loader = DataLoader(
@@ -299,7 +300,6 @@ def train(args):
         args.criterion_ce = LabelSmoothingLoss(classes=args.num_classes, smoothing=args.smoothing)
     # args.criterion_ce = torch.nn.CrossEntropyLoss().cuda()
     # args.torchKMeans = torchKMeans(verbose=False, n_clusters=2, distance=CosineSimilarity)
-
 
     # if args.resume != '':
     #     if args.gpu is None:
@@ -327,7 +327,7 @@ def train(args):
     step = 0
     for epoch in range(args.epochs):
         # train one epoch
-        step = train_one_epoch(model, train_data_loader, val_data_loader, 
+        step = train_one_epoch(model, train_data_loader, val_data_loader,
                                optimizer, epoch,
                                loss_meter, auc_meter, args, device,
                                step)
