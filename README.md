@@ -10,9 +10,9 @@ CLaRE integrates CoOp/CoCoOp with CLIP and fuses visual (ViT) and textual featur
 - **CoOp / CoCoOp**: Learnable textual prompts for classification  
 - **LaRE**: Region-level enhancement module  
 
-![CLaRE Pipeline](assets/CLaRE%20Pipeline.png)
-![LaRE Extraction Module](assets/LaRE%20Extraction%20Module.png)
-![CLaRE Refinement Module](assets/CLaRE%20Refinement%20Module.png)
+![CLaRE Pipeline](assets/clare_pipeline.png)
+![LaRE Extraction Module](assets/lare_extraction_module.png)
+![CLaRE Refinement Module](assets/clare_refinement_module.png)
 
 ## Project Structure
 
